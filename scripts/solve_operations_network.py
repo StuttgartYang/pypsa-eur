@@ -86,13 +86,17 @@ def set_parameters_from_optimized(n, n_optim):
         n_optim.storage_units['p_nom_opt'].reindex(stor_extend_i, fill_value=0.)
     n.storage_units.loc[stor_extend_i, 'p_nom_extendable'] = False
 
+    stores_extend_i = n.stores.index[n.stores.e_nom_extendable]
+    n.stores.loc[stores_extend_i, 'e_nom'] = n_optim.stores['e_nom_opt'].reindex(stores_extend_i,fill_value=0.)
+    n.stores.loc[stores_extend_i, 'e_nom_extendable'] = False
+
     return n
 
 if __name__ == "__main__":
     if 'snakemake' not in globals():
         from _helpers import mock_snakemake
         snakemake = mock_snakemake('solve_operations_network', network='elec',
-                                  simpl='', clusters='5', ll='copt', opts='Co2L-BAU-24H')
+                                  simpl='', clusters='5', ll='copt', opts='')
     configure_logging(snakemake)
 
     tmpdir = snakemake.config['solving'].get('tmpdir')
@@ -106,11 +110,13 @@ if __name__ == "__main__":
 
     config = snakemake.config
     opts = snakemake.wildcards.opts.split('-')
-    config['solving']['options']['skip_iterations'] = False
+    #config['solving']['options']['skip_iterations'] = False
+    config['solving']['options']['skip_iterations'] = True
 
     fn = getattr(snakemake.log, 'memory', None)
     with memory_logger(filename=fn, interval=30.) as mem:
         n = prepare_network(n, solve_opts=snakemake.config['solving']['options'])
+       # n.export_to_netcdf("../results/elec.nc")
         n = solve_network(n, config, solver_dir=tmpdir,
                           solver_log=snakemake.log.solver, opts=opts)
         n.export_to_netcdf(snakemake.output[0])
