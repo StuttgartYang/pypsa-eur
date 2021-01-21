@@ -431,7 +431,6 @@ def solve_network(n, config, solver_log=None, opts='', **kwargs):
     n.opts = opts
 
     if cf_solving.get('skip_iterations', False):
-        print("here here here here here here")
         network_lopf(n, solver_name=solver_name, solver_options=solver_options, keep_shadowprices=True,
                      extra_functionality=extra_functionality, **kwargs)
     else:

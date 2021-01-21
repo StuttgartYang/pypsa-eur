@@ -347,13 +347,13 @@ rule solve_operations_network_rh:
         #optimized="results/networks/2012/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_op.nc"
         #optimized="results/networks/"+config["energy_year"]+"/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc"
    # output: "results/networks/"+config["energy_year"]+"/refer2012/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_rh_mean.nc"
-    output: "results/networks/"+config["energy_year"]+"/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_rh_sp.nc"
+    output: "results/networks/"+config["energy_year"]+"/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{period}_rh_sp.nc"
 
     log:
-        solver=normpath("logs/solve_operations_network_rh/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_op_solver.log"),
-        python="logs/solve_operations_network_rh/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_op_python.log",
-        memory="logs/solve_operations_network_rh/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_op_memory.log"
-    benchmark: "benchmarks/solve_operations_network_rh/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}"
+        solver=normpath("logs/solve_operations_network_rh/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{period}_op_solver.log"),
+        python="logs/solve_operations_network_rh/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{period}_op_python.log",
+        memory="logs/solve_operations_network_rh/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{period}_op_memory.log"
+    benchmark: "benchmarks/solve_operations_network_rh/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{period}"
     threads: 4
     resources: mem=(lambda w: 5000 + 372 * int(w.clusters))
     shadow: "shallow"
