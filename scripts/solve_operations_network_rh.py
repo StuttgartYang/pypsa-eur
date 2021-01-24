@@ -128,17 +128,17 @@ def get_hydro_bid(n, snapshots, node):
     return discharging_bid
 
 
-def get_store_demand_bid(n,  carrier, node, link_charger, link_discharger):
+def get_store_demand_bid(n,  carrier, snapshots, node, link_charger, link_discharger):
     λ = n.buses_t.marginal_price.loc[:, node + " " + carrier]
     # if carrier == "hydro":
     #     n.links.efficiency[node + link_charger] = 1
     charge_efficiency = n.links.efficiency[node + link_charger]
     discharge_efficiency = n.links.efficiency[node + link_discharger]
     if node + " " + carrier in n.stores_t.mu_lower_e.columns:
-        mu_lower = n.stores_t.mu_lower_e.loc[:, node + " " + carrier]
+        mu_lower = n.stores_t.mu_lower_e.loc[snapshots, node + " " + carrier]
     else: mu_lower =0
     if node + " " + carrier in n.stores_t.mu_upper_e.columns:
-        mu_upper = n.stores_t.mu_upper_e.loc[:, node + " " + carrier]
+        mu_upper = n.stores_t.mu_upper_e.loc[snapshots, node + " " + carrier]
     else: mu_upper=0
     charging_bid = charge_efficiency * λ
     discharging_bid = λ / discharge_efficiency
@@ -179,26 +179,27 @@ def solve_network_rh(n, config, solver_log=None, opts='', period='', **kwargs):
 
     nodelist = n.buses[n.buses.carrier == "AC"].index
 
-    for carrier in n.stores.carrier.unique():
-        if carrier == "H2":
-            link_charger = " H2 Electrolysis"
-            link_discharger = " H2 Fuel Cell"
-        else:
-            link_charger = " " + carrier + " charger"
-            link_discharger = " " + carrier + " discharger"
-        for node in nodelist:
-            if node + " " + carrier in n_optim.buses.index:
-                charging_bid, discharging_bid = get_store_demand_bid(n_optim, carrier, node,
-                                                                     link_charger=link_charger,
-                                                                     link_discharger=link_discharger)
-                n.links_t.marginal_cost[node + link_charger] = 0
-                n.links_t.marginal_cost.loc[:, node + link_charger] = - charging_bid
-                n.links_t.marginal_cost[node + link_discharger] = 0
-                n.links_t.marginal_cost.loc[:, node + link_discharger] = discharging_bid
+
     for i in range(loop_num):
         # set initial state of charge
         snapshots = n.snapshots[i * kept:(i + 1) * kept + overlap]
         print(snapshots)
+        for carrier in n.stores.carrier.unique():
+            if carrier == "H2":
+                link_charger = " H2 Electrolysis"
+                link_discharger = " H2 Fuel Cell"
+            else:
+                link_charger = " " + carrier + " charger"
+                link_discharger = " " + carrier + " discharger"
+            for node in nodelist:
+                if node + " " + carrier in n_optim.buses.index:
+                    charging_bid, discharging_bid = get_store_demand_bid(n_optim, carrier, snapshots, node,
+                                                                         link_charger=link_charger,
+                                                                         link_discharger=link_discharger)
+                    n.links_t.marginal_cost[node + link_charger] = 0
+                    n.links_t.marginal_cost.loc[snapshots, node + link_charger] = - charging_bid
+                    n.links_t.marginal_cost[node + link_discharger] = 0
+                    n.links_t.marginal_cost.loc[snapshots, node + link_discharger] = discharging_bid
         if i == 0:
             n.stores.e_initial = n_optim.stores_t.e.iloc[0]
             n.storage_units.state_of_charge_initial = n_optim.storage_units_t.state_of_charge.iloc[-1]
