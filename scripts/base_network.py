@@ -554,8 +554,8 @@ def base_network():
     n = pypsa.Network()
     n.name = 'PyPSA-Eur'
 
-    n.set_snapshots(pd.date_range(freq='h', **snakemake.config['snapshots']))
-    n.snapshot_weightings[:] *= 8760. / n.snapshot_weightings.sum()
+    # n.set_snapshots(pd.date_range(freq='h', **snakemake.config['snapshots']))
+    # n.snapshot_weightings[:] *= 8760. / n.snapshot_weightings.sum()
 
     n.import_components_from_dataframe(buses, "Bus")
     n.import_components_from_dataframe(lines, "Line")

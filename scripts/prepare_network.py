@@ -214,6 +214,131 @@ def set_line_nom_max(n):
     n.lines.s_nom_max.clip(upper=s_nom_max_set, inplace=True)
     n.links.p_nom_max.clip(upper=p_nom_max_set, inplace=True)
 
+
+def replace_su(network, su_to_replace):
+    """Replace the storage unit su_to_replace with a bus for the energy
+    carrier, two links for the conversion of the energy carrier to and from electricity,
+    a store to keep track of the depletion of the energy carrier and its
+    CO2 emissions, and a variable generator for the storage inflow.
+
+    Because the energy size and power size are linked in the storage unit by the max_hours,
+    extra functionality must be added to the LOPF to implement this constraint."""
+
+    su = network.storage_units.loc[su_to_replace]
+
+    bus_name = "{} {}".format(su["bus"], su["carrier"])
+
+    link_1_name = "{} discharger".format(su_to_replace, su["carrier"])
+
+    link_2_name = "{} charger".format(su_to_replace, su["carrier"])
+
+    store_name = "{} store {}".format(su_to_replace, su["carrier"])
+
+    gen_name = "{} inflow".format(su_to_replace)
+
+    network.add("Bus",
+                bus_name,
+                carrier=su["carrier"])
+
+    # dispatch link
+    network.add("Link",
+                link_1_name,
+                bus0=bus_name,
+                bus1=su["bus"],
+                carrier=su["carrier"] + " discharger",
+                capital_cost=su["capital_cost"] * su["efficiency_dispatch"],
+                p_nom=su["p_nom"] / su["efficiency_dispatch"],
+                p_nom_extendable=su["p_nom_extendable"],
+                p_nom_max=su["p_nom_max"] / su["efficiency_dispatch"],
+                p_nom_min=su["p_nom_min"] / su["efficiency_dispatch"],
+                p_max_pu=su["p_max_pu"],
+                marginal_cost=su["marginal_cost"] * su["efficiency_dispatch"],
+                efficiency=su["efficiency_dispatch"])
+
+
+    # store link
+    network.add("Link",
+                link_2_name,
+                bus1=bus_name,
+                bus0=su["bus"],
+                carrier=su["carrier"] + " charger",
+                p_nom=su["p_nom"],
+                p_nom_extendable=su["p_nom_extendable"],
+                p_nom_max=su["p_nom_max"],
+                p_nom_min=su["p_nom_min"],
+                p_max_pu=-su["p_min_pu"],
+                efficiency=su["efficiency_store"])
+    network.links.loc[link_1_name, 'carrier'] = su["carrier"] + " discharger"
+    network.links.loc[link_2_name, 'carrier'] = su["carrier"] + " charger"
+
+    if su_to_replace in network.storage_units_t.state_of_charge_set.columns and (
+            ~pd.isnull(network.storage_units_t.state_of_charge_set[su_to_replace])).any():
+        e_max_pu = pd.Series(data=1., index=network.snapshots)
+        e_min_pu = pd.Series(data=0., index=network.snapshots)
+        non_null = ~pd.isnull(network.storage_units_t.state_of_charge_set[su_to_replace])
+        e_max_pu[non_null] = network.storage_units_t.state_of_charge_set[su_to_replace][non_null]
+        e_min_pu[non_null] = network.storage_units_t.state_of_charge_set[su_to_replace][non_null]
+    else:
+        e_max_pu = 1.
+        e_min_pu = 0.
+
+    network.add("Store",
+                store_name,
+                bus=bus_name,
+                carrier=su["carrier"],
+                e_nom=su["p_nom"] * su["max_hours"],
+                e_nom_min=su["p_nom_min"] / su["efficiency_dispatch"] * su["max_hours"],
+                e_nom_max=su["p_nom_max"] / su["efficiency_dispatch"] * su["max_hours"],
+                e_nom_extendable=su["p_nom_extendable"],
+                e_max_pu=e_max_pu,
+                e_min_pu=e_min_pu,
+                standing_loss=su["standing_loss"],
+                e_cyclic=su['cyclic_state_of_charge'],
+                e_initial=su['state_of_charge_initial'])
+    network.stores.loc[store_name, 'carrier'] = su["carrier"]
+
+    #     network.add("Carrier",
+    #                 "rain",
+    #                 co2_emissions=0.)
+
+    # inflow from a variable generator, which can be curtailed (i.e. spilled)
+    if su_to_replace in network.storage_units_t.inflow.columns:
+        inflow_max = network.storage_units_t.inflow[su_to_replace].max()
+
+        if inflow_max == 0.:
+            inflow_pu = 0.
+        else:
+            inflow_pu = network.storage_units_t.inflow[su_to_replace] / inflow_max
+    else:
+        inflow_max = 0.
+        inflow_pu = 0.
+
+    network.add("Generator",
+                gen_name,
+                bus=bus_name,
+                carrier=su["carrier"],
+                p_nom=inflow_max,
+                p_max_pu=inflow_pu)
+    network.generators.loc[gen_name, 'carrier'] = su["carrier"]
+
+    if su["p_nom_extendable"]:
+        ratio2 = su["max_hours"]
+        ratio1 = ratio2 * su["efficiency_dispatch"]
+
+        def extra_functionality(network, snapshots):
+            model = network.model
+            model.store_fix_1 = Constraint(
+                rule=lambda model: model.store_e_nom[store_name] == model.link_p_nom[link_1_name] * ratio1)
+            model.store_fix_2 = Constraint(
+                rule=lambda model: model.store_e_nom[store_name] == model.link_p_nom[link_2_name] * ratio2)
+
+    else:
+        extra_functionality = None
+
+    network.remove("StorageUnit", su_to_replace)
+
+    return bus_name, link_1_name, link_2_name, store_name, gen_name, extra_functionality
+
 if __name__ == "__main__":
     if 'snakemake' not in globals():
         from _helpers import mock_snakemake
@@ -279,4 +404,6 @@ if __name__ == "__main__":
     elif "ATKc" in opts:
         enforce_autarky(n, only_crossborder=True)
 
+    for index in n.storage_units.index:
+            replace_su(n, index)
     n.export_to_netcdf(snakemake.output[0])

@@ -115,136 +115,9 @@ def cut_snapshots(n):
     n.set_snapshots(df.index)
     return n
 
-
-def replace_su(network, su_to_replace):
-    """Replace the storage unit su_to_replace with a bus for the energy
-    carrier, two links for the conversion of the energy carrier to and from electricity,
-    a store to keep track of the depletion of the energy carrier and its
-    CO2 emissions, and a variable generator for the storage inflow.
-
-    Because the energy size and power size are linked in the storage unit by the max_hours,
-    extra functionality must be added to the LOPF to implement this constraint."""
-
-    su = network.storage_units.loc[su_to_replace]
-
-    bus_name = "{} {}".format(su["bus"], su["carrier"])
-
-    link_1_name = "{} discharger".format(su_to_replace, su["carrier"])
-
-    link_2_name = "{} charger".format(su_to_replace, su["carrier"])
-
-    store_name = "{} store {}".format(su_to_replace, su["carrier"])
-
-    gen_name = "{} inflow".format(su_to_replace)
-
-    network.add("Bus",
-                bus_name,
-                carrier=su["carrier"])
-
-    # dispatch link
-    network.add("Link",
-                link_1_name,
-                bus0=bus_name,
-                bus1=su["bus"],
-                carrier=su["carrier"] + " discharger",
-                capital_cost=su["capital_cost"] * su["efficiency_dispatch"],
-                p_nom=su["p_nom"] / su["efficiency_dispatch"],
-                p_nom_extendable=su["p_nom_extendable"],
-                p_nom_max=su["p_nom_max"] / su["efficiency_dispatch"],
-                p_nom_min=su["p_nom_min"] / su["efficiency_dispatch"],
-                p_max_pu=su["p_max_pu"],
-                marginal_cost=su["marginal_cost"] * su["efficiency_dispatch"],
-                efficiency=su["efficiency_dispatch"])
-
-
-    # store link
-    network.add("Link",
-                link_2_name,
-                bus1=bus_name,
-                bus0=su["bus"],
-                carrier=su["carrier"] + " charger",
-                p_nom=su["p_nom"],
-                p_nom_extendable=su["p_nom_extendable"],
-                p_nom_max=su["p_nom_max"],
-                p_nom_min=su["p_nom_min"],
-                p_max_pu=-su["p_min_pu"],
-                efficiency=su["efficiency_store"])
-    network.links.loc[link_1_name, 'carrier'] = su["carrier"] + " discharger"
-    network.links.loc[link_2_name, 'carrier'] = su["carrier"] + " charger"
-
-    if su_to_replace in network.storage_units_t.state_of_charge_set.columns and (
-            ~pd.isnull(network.storage_units_t.state_of_charge_set[su_to_replace])).any():
-        e_max_pu = pd.Series(data=1., index=network.snapshots)
-        e_min_pu = pd.Series(data=0., index=network.snapshots)
-        non_null = ~pd.isnull(network.storage_units_t.state_of_charge_set[su_to_replace])
-        e_max_pu[non_null] = network.storage_units_t.state_of_charge_set[su_to_replace][non_null]
-        e_min_pu[non_null] = network.storage_units_t.state_of_charge_set[su_to_replace][non_null]
-    else:
-        e_max_pu = 1.
-        e_min_pu = 0.
-
-    network.add("Store",
-                store_name,
-                bus=bus_name,
-                carrier=su["carrier"],
-                e_nom=su["p_nom"] * su["max_hours"],
-                e_nom_min=su["p_nom_min"] / su["efficiency_dispatch"] * su["max_hours"],
-                e_nom_max=su["p_nom_max"] / su["efficiency_dispatch"] * su["max_hours"],
-                e_nom_extendable=su["p_nom_extendable"],
-                e_max_pu=e_max_pu,
-                e_min_pu=e_min_pu,
-                standing_loss=su["standing_loss"],
-                e_cyclic=su['cyclic_state_of_charge'],
-                e_initial=su['state_of_charge_initial'])
-    network.stores.loc[store_name, 'carrier'] = su["carrier"]
-
-    #     network.add("Carrier",
-    #                 "rain",
-    #                 co2_emissions=0.)
-
-    # inflow from a variable generator, which can be curtailed (i.e. spilled)
-    if su_to_replace in network.storage_units_t.inflow.columns:
-        inflow_max = network.storage_units_t.inflow[su_to_replace].max()
-
-        if inflow_max == 0.:
-            inflow_pu = 0.
-        else:
-            inflow_pu = network.storage_units_t.inflow[su_to_replace] / inflow_max
-    else:
-        inflow_max = 0.
-        inflow_pu = 0.
-
-    network.add("Generator",
-                gen_name,
-                bus=bus_name,
-                carrier=su["carrier"],
-                p_nom=inflow_max,
-                p_max_pu=inflow_pu)
-    network.generators.loc[gen_name, 'carrier'] = su["carrier"]
-
-    if su["p_nom_extendable"]:
-        ratio2 = su["max_hours"]
-        ratio1 = ratio2 * su["efficiency_dispatch"]
-
-        def extra_functionality(network, snapshots):
-            model = network.model
-            model.store_fix_1 = Constraint(
-                rule=lambda model: model.store_e_nom[store_name] == model.link_p_nom[link_1_name] * ratio1)
-            model.store_fix_2 = Constraint(
-                rule=lambda model: model.store_e_nom[store_name] == model.link_p_nom[link_2_name] * ratio2)
-
-    else:
-        extra_functionality = None
-
-    network.remove("StorageUnit", su_to_replace)
-
-    return bus_name, link_1_name, link_2_name, store_name, gen_name, extra_functionality
-
 def prepare_network(n, solve_opts):
     if leap_year(n.snapshots[0].year):
         n = cut_snapshots(n)
-    for index in n.storage_units.index:
-            replace_su(n, index)
 
     if 'clip_p_max_pu' in solve_opts:
         for df in (n.generators_t.p_max_pu, n.storage_units_t.inflow):
@@ -280,12 +153,12 @@ def prepare_network(n, solve_opts):
         n.set_snapshots(n.snapshots[:nhours])
         n.snapshot_weightings[:] = 8760./nhours
     # ### replace AC load with AC load from 2013
-    network_ac_load = pypsa.Network('networks/2013/elec_s_40_ec_lv1.0_Co2L0p0-3H.nc')
-    #electric_nodes = n.loads.index[n.loads.carrier == "electricity"]
-    # n.loads_t.p_set[electric_nodes] = n.loads_t.p_set[electric_nodes] - electric_heat_supply.groupby(level=1, axis=1).sum()[electric_nodes]
-    load_index = n.loads_t.p_set.index
-    network_ac_load.loads_t.p_set.index = load_index
-    n.loads_t.p_set.loc[load_index, :] = network_ac_load.loads_t.p_set.loc[load_index, :]
+    # network_ac_load = pypsa.Network('networks/2013/elec_s_40_ec_lv1.0_Co2L0p0-3H.nc')
+    # #electric_nodes = n.loads.index[n.loads.carrier == "electricity"]
+    # # n.loads_t.p_set[electric_nodes] = n.loads_t.p_set[electric_nodes] - electric_heat_supply.groupby(level=1, axis=1).sum()[electric_nodes]
+    # load_index = n.loads_t.p_set.index
+    # network_ac_load.loads_t.p_set.index = load_index
+    # n.loads_t.p_set.loc[load_index, :] = network_ac_load.loads_t.p_set.loc[load_index, :]
 
     return n
 
@@ -397,25 +270,6 @@ def extra_functionality(n, snapshots):
         if "EQ" in o:
             add_EQ_constraints(n, o)
     add_battery_constraints(n)
-
-    # for index in n.storage_units.index:
-    #     su = n.storage_units.loc[index]
-    #     link_1_name = "{} converter {} to AC".format(index, su["carrier"])
-    #
-    #     link_2_name = "{} converter AC to {}".format(index, su["carrier"])
-    #
-    #     if su["p_nom_extendable"]:
-    #         ratio2 = su["max_hours"]
-    #         ratio1 = ratio2 * su["efficiency_dispatch"]
-    #
-    #         def extra_functionality(n, snapshots):
-    #             model = n.model
-    #             model.store_fix_1 = Constraint(
-    #                 rule=lambda model: model.store_e_nom[store_name] == model.link_p_nom[link_1_name] * ratio1)
-    #             model.store_fix_2 = Constraint(
-    #                 rule=lambda model: model.store_e_nom[store_name] == model.link_p_nom[link_2_name] * ratio2)
-
-
 
 
 def solve_network(n, config, solver_log=None, opts='', **kwargs):

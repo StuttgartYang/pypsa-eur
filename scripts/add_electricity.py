@@ -203,12 +203,29 @@ def attach_load(n):
     substation_lv_i = n.buses.index[n.buses['substation_lv']]
     regions = (gpd.read_file(snakemake.input.regions).set_index('name')
                .reindex(substation_lv_i))
-    opsd_load = (pd.read_csv(snakemake.input.load, index_col=0, parse_dates=True)
-                .filter(items=snakemake.config['countries']))
+    # opsd_load = (pd.read_csv(snakemake.input.load, index_col=0, parse_dates=True)
+    #             .filter(items=snakemake.config['countries']))
+    print(str(n.snapshots[0].year))
+
+    ###use electricity load from year 2013 for test
+
+    if (str(n.snapshots[0].year) in snakemake.config['leap_years']):
+        opsd_load = (timeseries_opsd(slice('2012', '2012', None),
+                                     snakemake.input.load) *
+                     snakemake.config.get('load', {}).get('scaling_factor', 1.0))
+        print(opsd_load)
+    else:
+        opsd_load = (timeseries_opsd(slice('2013', '2013', None),
+                                     snakemake.input.load) *
+                     snakemake.config.get('load', {}).get('scaling_factor', 1.0))
 
     scaling = snakemake.config.get('load', {}).get('scaling_factor', 1.0)
     logger.info(f"Load data scaled with scalling factor {scaling}.")
     opsd_load *= scaling
+    # Convert to naive UTC (has to be explicit since pandas 0.24)
+    opsd_load.index = opsd_load.index.tz_localize(None)
+    opsd_load.index = n.loads_t.p_set.index
+
 
     nuts3 = gpd.read_file(snakemake.input.nuts3_shapes).set_index('index')
 
@@ -234,6 +251,9 @@ def attach_load(n):
 
     load = pd.concat([upsample(cntry, group) for cntry, group
                       in regions.geometry.groupby(regions.country)], axis=1)
+
+    print("load")
+    print(load)
 
     n.madd("Load", substation_lv_i, bus=substation_lv_i, p_set=load)
 
@@ -554,6 +574,9 @@ if __name__ == "__main__":
     configure_logging(snakemake)
 
     n = pypsa.Network(snakemake.input.base_network)
+    # add snapshots
+    n.set_snapshots(pd.date_range(freq='h', **snakemake.config['snapshots']))
+    n.snapshot_weightings[:] *= 8760./n.snapshot_weightings.sum()
     Nyears = n.snapshot_weightings.sum() / 8760.
 
     costs = load_costs(Nyears)

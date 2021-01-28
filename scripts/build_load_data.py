@@ -133,7 +133,7 @@ def manual_adjustment(load, powerstatistics):
     Kosovo (KV) and Albania (AL) do not exist in the data set. Kosovo gets the
     same load curve as Serbia and Albania the same as Macdedonia, both scaled
     by the corresponding ratio of total energy consumptions reported by
-    IEA Data browser [0] for the year 2013.
+    IEA Data browser [0] for the year 2013_backup.
 
     2. For the ENTSOE transparency load data (if powerstatistics is False)
 

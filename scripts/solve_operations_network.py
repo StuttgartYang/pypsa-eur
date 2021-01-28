@@ -116,7 +116,6 @@ if __name__ == "__main__":
     fn = getattr(snakemake.log, 'memory', None)
     with memory_logger(filename=fn, interval=30.) as mem:
         n = prepare_network(n, solve_opts=snakemake.config['solving']['options'])
-       # n.export_to_netcdf("../results/elec.nc")
         n = solve_network(n, config, solver_dir=tmpdir,
                           solver_log=snakemake.log.solver, opts=opts)
         n.export_to_netcdf(snakemake.output[0])

@@ -141,7 +141,7 @@ def get_store_demand_bid(n,  carrier, snapshots, node, link_charger, link_discha
         mu_upper = n.stores_t.mu_upper_e.loc[snapshots, node + " " + carrier]
     else: mu_upper=0
     charging_bid = charge_efficiency * λ
-    discharging_bid = λ / discharge_efficiency
+    discharging_bid = λ
     return charging_bid, discharging_bid
 
 # def get_hydro_bid(n, snapshots, node):
@@ -162,7 +162,7 @@ def solve_network_rh(n, config, solver_log=None, opts='', period='', **kwargs):
     # add to network for extra_functionality
     n.config = config
     n.opts = opts
-    freq = 1
+    freq = 3
     length = len(n.snapshots)
     if period == "3h":
         loop_num = length - 1
@@ -178,28 +178,28 @@ def solve_network_rh(n, config, solver_log=None, opts='', period='', **kwargs):
         print( "period should be 3h or 2w")
 
     nodelist = n.buses[n.buses.carrier == "AC"].index
-
+    for carrier in n.stores.carrier.unique():
+        if carrier == "H2":
+            link_charger = " H2 Electrolysis"
+            link_discharger = " H2 Fuel Cell"
+        else:
+            link_charger = " " + carrier + " charger"
+            link_discharger = " " + carrier + " discharger"
+        for node in nodelist:
+            if node + " " + carrier in n_optim.buses.index:
+                charging_bid, discharging_bid = get_store_demand_bid(n_optim, carrier, n.snapshots, node,
+                                                                     link_charger=link_charger,
+                                                                     link_discharger=link_discharger)
+                n.links_t.marginal_cost[node + link_charger] = 0
+                n.links_t.marginal_cost.loc[n.snapshots, node + link_charger] = - charging_bid
+                n.links_t.marginal_cost[node + link_discharger] = 0
+                n.links_t.marginal_cost.loc[n.snapshots, node + link_discharger] = discharging_bid
 
     for i in range(loop_num):
         # set initial state of charge
         snapshots = n.snapshots[i * kept:(i + 1) * kept + overlap]
         print(snapshots)
-        for carrier in n.stores.carrier.unique():
-            if carrier == "H2":
-                link_charger = " H2 Electrolysis"
-                link_discharger = " H2 Fuel Cell"
-            else:
-                link_charger = " " + carrier + " charger"
-                link_discharger = " " + carrier + " discharger"
-            for node in nodelist:
-                if node + " " + carrier in n_optim.buses.index:
-                    charging_bid, discharging_bid = get_store_demand_bid(n_optim, carrier, snapshots, node,
-                                                                         link_charger=link_charger,
-                                                                         link_discharger=link_discharger)
-                    n.links_t.marginal_cost[node + link_charger] = 0
-                    n.links_t.marginal_cost.loc[snapshots, node + link_charger] = - charging_bid
-                    n.links_t.marginal_cost[node + link_discharger] = 0
-                    n.links_t.marginal_cost.loc[snapshots, node + link_discharger] = discharging_bid
+
         if i == 0:
             n.stores.e_initial = n_optim.stores_t.e.iloc[0]
             n.storage_units.state_of_charge_initial = n_optim.storage_units_t.state_of_charge.iloc[-1]
@@ -209,13 +209,13 @@ def solve_network_rh(n, config, solver_log=None, opts='', period='', **kwargs):
             n.storage_units.state_of_charge_initial = n.storage_units_t.state_of_charge.iloc[i * kept - 1]
         if cf_solving.get('skip_iterations', False):
             network_lopf(n, snapshots, solver_name=solver_name, solver_options=solver_options, keep_shadowprices=True,
-                         extra_functionality=extra_functionality, **kwargs)
+                         extra_functionality=None, **kwargs)
         else:
             ilopf(n, snapshots, solver_name=solver_name, solver_options=solver_options,
                   track_iterations=track_iterations,
                   min_iterations=min_iterations,
                   max_iterations=max_iterations,
-                  extra_functionality=extra_functionality, **kwargs)
+                  extra_functionality=None, **kwargs)
 
 
     return n
@@ -255,3 +255,5 @@ if __name__ == "__main__":
         n.export_to_netcdf(snakemake.output[0])
 
     logger.info("Maximum memory usage: {}".format(mem.mem_usage))
+
+
