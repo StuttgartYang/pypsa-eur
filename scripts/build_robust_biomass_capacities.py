@@ -54,6 +54,7 @@ import numpy as np
 from pathlib import Path
 from vresutils.benchmark import memory_logger
 from solve_network import solve_network, prepare_network
+from build_robust_capacities import calculate_nodal_capacities
 from six import iteritems
 import pandas as pd
 import os
@@ -65,49 +66,42 @@ idx = pd.IndexSlice
 opt_name = {"Store": "e", "Line" : "s", "Transformer" : "s"}
 capacity_years = ['2014','2015']
 
-def assign_carriers(n):
-    if "carrier" not in n.lines:
-        n.lines["carrier"] = "AC"
-
-
-def assign_locations(n):
-    for c in n.iterate_components(n.one_port_components|n.branch_components):
-        ifind = pd.Series(c.df.index.str.find(" ",start=4),c.df.index)
-        for i in ifind.unique():
-            names = ifind.index[ifind == i]
-            if i == -1:
-                c.df.loc[names,'location'] = ""
-            else:
-                c.df.loc[names,'location'] = names.str[:i]
-
-def calculate_nodal_capacities(networks_dict):
-    #Beware this also has extraneous locations for country (e.g. biomass) or continent-wide (e.g. fossil gas/oil) stuff
-    # networks_dict = {(year):'results/networks/{year}/elec_s_40_ec_lv1.0_Co2L0p0-3H_storage_units.nc' \
-    #                          .format(year=year) for year in capacity_years}
-    columns = list(networks_dict.keys())
-    nodal_capacities = pd.DataFrame(columns=columns)
-
-    for label, filename in iteritems(networks_dict):
-        print(label)
-        print(filename)
-        if not os.path.exists(filename):
-            print("does not exist!!")
-            continue
-        n = pypsa.Network(filename)
-        assign_carriers(n)
-        assign_locations(n)
-
-        for c in n.iterate_components(n.branch_components ^ {"Transformer"}| n.controllable_one_port_components ^ {"Load"}):
-            #nodal_capacities_c = c.df.groupby(["location", "carrier"])[opt_name.get(c.name, "p") + "_nom_opt"].sum()
-            nodal_capacities_c = c.df[opt_name.get(c.name, "p") + "_nom_opt"]
-           # print([(c.list_name,) + t for t in nodal_capacities_c.index])
-            index = pd.MultiIndex.from_tuples([(c.list_name,t) for t in nodal_capacities_c.index])
-            nodal_capacities = nodal_capacities.reindex(index | nodal_capacities.index)
-            nodal_capacities.loc[index, label] = nodal_capacities_c.values
-        # df = pd.concat([nodal_capacities, df], axis=1)
-    print(nodal_capacities)
-    nodal_capacities.to_csv("notebook/data/nodal_capacities.csv")
-    return nodal_capacities
+# def assign_carriers(n):
+#     if "carrier" not in n.lines:
+#         n.lines["carrier"] = "AC"
+#
+#
+# def assign_locations(n):
+#     for c in n.iterate_components(n.one_port_components|n.branch_components):
+#         ifind = pd.Series(c.df.index.str.find(" ",start=4),c.df.index)
+#         for i in ifind.unique():
+#             names = ifind.index[ifind == i]
+#             if i == -1:
+#                 c.df.loc[names,'location'] = ""
+#             else:
+#                 c.df.loc[names,'location'] = names.str[:i]
+#
+# def calculate_nodal_capacities():
+#     #Beware this also has extraneous locations for country (e.g. biomass) or continent-wide (e.g. fossil gas/oil) stuff
+#     networks_dict = {(year):'results/networks/{year}/robust_capacities/elec_s_40_ec_lv1.0_Co2L0p0-3H_storage_units.nc' \
+#                              .format(year=year) for year in capacity_years}
+#     columns = list(networks_dict.keys())
+#     nodal_capacities = pd.DataFrame(columns=columns)
+#     for label, filename in iteritems(networks_dict):
+#         n = pypsa.Network(filename)
+#         assign_carriers(n)
+#         assign_locations(n)
+#
+#         for c in n.iterate_components(n.branch_components ^ {"Transformer"}| n.controllable_one_port_components ^ {"Load"}):
+#             #nodal_capacities_c = c.df.groupby(["location", "carrier"])[opt_name.get(c.name, "p") + "_nom_opt"].sum()
+#             nodal_capacities_c = c.df[opt_name.get(c.name, "p") + "_nom_opt"]
+#            # print([(c.list_name,) + t for t in nodal_capacities_c.index])
+#             index = pd.MultiIndex.from_tuples([(c.list_name,t) for t in nodal_capacities_c.index])
+#             nodal_capacities = nodal_capacities.reindex(index | nodal_capacities.index)
+#             nodal_capacities.loc[index, label] = nodal_capacities_c.values
+#         # df = pd.concat([nodal_capacities, df], axis=1)
+#     nodal_capacities.to_csv("notebook/data/nodal_capacities.csv")
+#     return nodal_capacities
 
 
 def set_parameters_from_optimized(n, networks_dict):
@@ -135,28 +129,28 @@ def set_parameters_from_optimized(n, networks_dict):
 
     links_dc_i = n.links.index[n.links.carrier == 'DC']
     links_capacities = nodal_capacities.loc['links']
-    n.links.loc[links_dc_i, 'p_nom_max'] = links_capacities.loc[links_dc_i,:].max(axis=1)
-    n.links.loc[links_dc_i, 'p_nom_min'] = links_capacities.loc[links_dc_i,:].mean(axis=1)
-   # n.links.loc[links_dc_i, 'p_nom_extendable'] = False
+    n.links.loc[links_dc_i, 'p_nom'] = links_capacities.loc[links_dc_i,:].mean(axis=1)
+    n.links.loc[links_dc_i, 'p_nom_extendable'] = False
 
+    #
     gen_extend_i = n.generators.index[n.generators.p_nom_extendable]
     gen_capacities = nodal_capacities.loc['generators']
-    #gen_capacities = gen_capacities.reset_index(level=[1]).reindex(gen_extend_i, fill_value=0.)
-    n.generators.loc[gen_extend_i, 'p_nom_max'] = gen_capacities.loc[gen_extend_i,:].max(axis=1)
-    n.generators.loc[gen_extend_i, 'p_nom_min'] = gen_capacities.loc[gen_extend_i,:].mean(axis=1)
-   # n.generators.loc[gen_extend_i, 'p_nom_extendable'] = False
+    biomass_extend_index = n.generators.index[n.generators.carrier == 'biomass']
+    gen_extend_i_exclude_biomass = [elem for i, elem in enumerate(gen_extend_i) if elem not in biomass_extend_index]
+    n.generators.loc[gen_extend_i, 'p_nom'] = gen_capacities.loc[gen_extend_i,:].mean(axis=1)
+    n.generators.loc[gen_extend_i, 'p_nom_extendable'] = False
+    n.generators.loc[biomass_extend_index, 'p_nom_extendable'] = True
+
 
     stor_extend_i = n.storage_units.index[n.storage_units.p_nom_extendable]
     stor_capacities = nodal_capacities.loc['storage_units']
-    n.storage_units.loc[stor_extend_i, 'p_nom_max'] = stor_capacities.loc[stor_extend_i,:].max(axis=1)
-    n.storage_units.loc[stor_extend_i, 'p_nom_min'] = stor_capacities.loc[stor_extend_i, :].mean(axis=1)
-   # n.storage_units.loc[stor_extend_i, 'p_nom_extendable'] = False
+    n.storage_units.loc[stor_extend_i, 'p_nom'] = stor_capacities.loc[stor_extend_i, :].mean(axis=1)
+    n.storage_units.loc[stor_extend_i, 'p_nom_extendable'] = False
 
     stores_extend_i = n.stores.index[n.stores.e_nom_extendable]
     stores_capacities = nodal_capacities.loc['stores']
-    n.stores.loc[stores_extend_i, 'e_nom_max'] = stores_capacities.loc[stores_extend_i,:].max(axis=1)
-    n.stores.loc[stores_extend_i, 'e_nom_min'] = stores_capacities.loc[stores_extend_i, :].mean(axis=1)
-   # n.stores.loc[stores_extend_i, 'e_nom_extendable'] = False
+    n.stores.loc[stores_extend_i, 'e_nom'] = stores_capacities.loc[stores_extend_i, :].mean(axis=1)
+    n.stores.loc[stores_extend_i, 'e_nom_extendable'] = False
     return n
 
 if __name__ == "__main__":
@@ -164,9 +158,9 @@ if __name__ == "__main__":
         from _helpers import mock_snakemake
         snakemake = mock_snakemake('build_robust_capacities', network='elec', simpl='',
                            clusters='5', ll='copt', opts='Co2L-24H', capacitiy_years='2013')
-        network_dir = os.path.join('..', 'results', 'networks')
+        network_dir = os.path.join('..', 'results', 'networks', 'robust_capacities')
     else:
-        network_dir = os.path.join('results', 'networks')
+        network_dir = os.path.join('results', 'networks', 'robust_capacities')
     configure_logging(snakemake)
 
     def expand_from_wildcard(key):
@@ -184,16 +178,21 @@ if __name__ == "__main__":
         ll = [snakemake.wildcards.ll]
 
     networks_dict = {(capacity_year) :
-        os.path.join(network_dir, capacity_year, f'elec_s{simpl}_'
-                                  f'{clusters}_ec_l{l}_{opts}.nc')
+        os.path.join(network_dir, f'elec_s{simpl}_'
+                                  f'{clusters}_ec_l{l}_{opts}_{capacity_year}.nc')
                      for capacity_year in snakemake.config["scenario"]["capacity_years"]
                      for simpl in expand_from_wildcard("simpl")
                      for clusters in expand_from_wildcard("clusters")
                      for l in ll
                      for opts in expand_from_wildcard("opts")}
+
     print(networks_dict)
-    #
-    #
+    configure_logging(snakemake)
+
+    tmpdir = snakemake.config['solving'].get('tmpdir')
+    if tmpdir is not None:
+        Path(tmpdir).mkdir(parents=True, exist_ok=True)
+
     n = pypsa.Network(snakemake.input.unprepared)
     # n_optim = pypsa.Network(snakemake.input.optimized)
     n = set_parameters_from_optimized(n, networks_dict)

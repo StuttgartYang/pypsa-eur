@@ -36,6 +36,8 @@ rule prepare_all_networks:
 rule solve_all_networks:
     input: expand("results/networks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc", **config['scenario'])
 
+rule solve_all_biomass_capacities_networks:
+    input: expand("results/networks/robust_capacities_biomass/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario'])
 
 
 if config['enable'].get('prepare_links_p_nom', False):
@@ -310,8 +312,9 @@ rule prepare_network:
 
 
 rule solve_network:
-    input: "networks/"+config["energy_year"]+"/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc"
-    output: "results/networks/"+config["energy_year"]+"/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc"
+    input: "networks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc"
+    #"networks/"+config["energy_year"]+"/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc"
+    output: "results/networks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc"
     log:
         solver=normpath("logs/solve_network/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_solver.log"),
         python="logs/solve_network/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_python.log",
@@ -323,12 +326,26 @@ rule solve_network:
     shadow: "shallow"
     script: "scripts/solve_network.py"
 
+rule solve_network_capacity_years:
+    input: "networks/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc"
+    output: "results/networks/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc"
+    log:
+        solver=normpath("logs/solve_network/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_solver.log"),
+        python="logs/solve_network/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_python.log",
+        memory="logs/solve_network/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_memory.log"
+    benchmark: "benchmarks/{capacity_years}/solve_network/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}"
+    threads: 4
+    #resources: mem=memory
+    resources: mem=(lambda w: 5000 + 372 * int(w.clusters))
+    shadow: "shallow"
+    script: "scripts/solve_network.py"
+
 
 rule solve_operations_network:
     input:
         unprepared="networks/"+config["energy_year"]+"/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
-        optimized="results/networks/"+config["energy_year"]+"/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc"
-        #optimized="results/networks/2012/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_op.nc"
+        #optimized="results/networks/"+config["energy_year"]+"/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc"
+        optimized="results/networks/2012/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_op.nc"
     output: "results/networks/"+config["energy_year"]+"/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_op.nc"
     log:
         solver=normpath("logs/solve_operations_network/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_op_solver.log"),
@@ -340,21 +357,64 @@ rule solve_operations_network:
     shadow: "shallow"
     script: "scripts/solve_operations_network.py"
 
+
+def input_solved_network_weather_years(w):
+#     return expand("results/networks/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
+#                    network=w.network,
+#                    **{k: config["scenario"][k] getattr(w, k) for k in ["capacity_years", "simpl", "clusters","ll", "opts"]})
+
+    if w.ll.endswith("all"):
+        ll = config["scenario"]["ll"]
+        if len(w.ll) == 4:
+            ll = [l for l in ll if l[0] == w.ll[0]]
+    else:
+        ll = w.ll
+    return (expand("results/networks/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc", **config['scenario']))
+#     (expand("results/networks/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
+#                    **{k: config["scenario"][k] if getattr(w, k) == "all" else getattr(w, k)
+#                       for k in ["capacity_years","simpl", "clusters", "opts"]}))
+
 rule build_robust_capacities:
     input:
-        unprepared="networks/"+config["energy_year"]+"/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_storage_units.nc",
-        #optimized="results/networks/"+config["energy_year"]+"/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc"
-        #optimized="results/networks/2012/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_op.nc"
-    output: "results/networks/"+config["energy_year"]+"/robust_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc"
+       solved_networks=input_solved_network_weather_years,
+       unprepared="networks/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
+    output: "results/networks/robust_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc"
     log:
-        solver=normpath("logs/build_robust_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_op_solver.log"),
-        python="logs/build_robust_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_op_python.log",
-        memory="logs/build_robust_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_op_memory.log"
-    benchmark: "benchmarks/build_robust_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}"
+        solver=normpath("logs/build_robust_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_solver.log"),
+        python="logs/build_robust_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_python.log",
+        memory="logs/build_robust_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_memory.log"
+    benchmark: "benchmarks/build_robust_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{capacity_years}_{opts}"
     threads: 4
     resources: mem=(lambda w: 5000 + 372 * int(w.clusters))
     shadow: "shallow"
     script: "scripts/build_robust_capacities.py"
+
+rule build_robust_biomass_capacities:
+    input: solved_biomass_networks = expand("results/networks/robust_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario']),
+        unprepared="networks/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc"
+    output: "results/networks/robust_capacities_biomass/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc"
+    log:
+        solver=normpath("logs/build_robust_biomass_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_solver.log"),
+        python="logs/build_robust_biomass_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_python.log",
+        memory="logs/build_robust_biomass_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_memory.log"
+    benchmark: "benchmarks/build_robust_biomass_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}"
+    threads: 4
+    resources: mem=(lambda w: 5000 + 372 * int(w.clusters))
+    shadow: "shallow"
+    script: "scripts/build_robust_biomass_capacities.py"
+
+rule build_final_robust_capacities:
+    input: solved_biomass_networks = expand("results/networks/robust_capacities_biomass/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario']),
+    output: "results/networks/final_robust_capacities/robust_capacities.csv"
+    log:
+        solver=normpath("logs/build_robust_biomass_capacities/robust_capacities.log"),
+        python="logs/build_final_robust_capacities/robust_capacities.log",
+        memory="logs/build_final_robust_capacities/robust_capacities.log"
+    benchmark: "benchmarks/build_final_robust_capacities/robust_capacities"
+    threads: 4
+    resources: mem=5000
+    shadow: "shallow"
+    script: "scripts/build_final_robust_capacities.py"
 
 rule solve_operations_network_rh:
     input:

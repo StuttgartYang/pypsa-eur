@@ -403,7 +403,7 @@ if __name__ == "__main__":
         enforce_autarky(n)
     elif "ATKc" in opts:
         enforce_autarky(n, only_crossborder=True)
-
-    for index in n.storage_units.index:
-            replace_su(n, index)
+    # Replace storage units with stores
+    # for index in n.storage_units.index:
+    #         replace_su(n, index)
     n.export_to_netcdf(snakemake.output[0])
