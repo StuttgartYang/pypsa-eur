@@ -86,12 +86,10 @@ def calculate_nodal_capacities(networks_dict):
     #                          .format(year=year) for year in capacity_years}
     columns = list(networks_dict.keys())
     nodal_capacities = pd.DataFrame(columns=columns)
+    lines_capacities = pd.DataFrame()
 
     for label, filename in iteritems(networks_dict):
-        print(label)
-        print(filename)
         if not os.path.exists(filename):
-            print("does not exist!!")
             continue
         n = pypsa.Network(filename)
         assign_carriers(n)

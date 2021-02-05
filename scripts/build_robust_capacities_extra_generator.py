@@ -55,6 +55,7 @@ from pathlib import Path
 from vresutils.benchmark import memory_logger
 from solve_network import solve_network, prepare_network
 from build_robust_capacities import calculate_nodal_capacities
+from add_electricity import load_costs, load_powerplants, attach_conventional_generators, _add_missing_carriers_from_costs
 from six import iteritems
 import pandas as pd
 import os
@@ -64,44 +65,49 @@ logger = logging.getLogger(__name__)
 idx = pd.IndexSlice
 
 opt_name = {"Store": "e", "Line" : "s", "Transformer" : "s"}
-capacity_years = ['2014','2015']
 
-# def assign_carriers(n):
-#     if "carrier" not in n.lines:
-#         n.lines["carrier"] = "AC"
-#
-#
-# def assign_locations(n):
-#     for c in n.iterate_components(n.one_port_components|n.branch_components):
-#         ifind = pd.Series(c.df.index.str.find(" ",start=4),c.df.index)
-#         for i in ifind.unique():
-#             names = ifind.index[ifind == i]
-#             if i == -1:
-#                 c.df.loc[names,'location'] = ""
-#             else:
-#                 c.df.loc[names,'location'] = names.str[:i]
-#
-# def calculate_nodal_capacities():
-#     #Beware this also has extraneous locations for country (e.g. biomass) or continent-wide (e.g. fossil gas/oil) stuff
-#     networks_dict = {(year):'results/networks/{year}/robust_capacities/elec_s_40_ec_lv1.0_Co2L0p0-3H_storage_units.nc' \
-#                              .format(year=year) for year in capacity_years}
-#     columns = list(networks_dict.keys())
-#     nodal_capacities = pd.DataFrame(columns=columns)
-#     for label, filename in iteritems(networks_dict):
-#         n = pypsa.Network(filename)
-#         assign_carriers(n)
-#         assign_locations(n)
-#
-#         for c in n.iterate_components(n.branch_components ^ {"Transformer"}| n.controllable_one_port_components ^ {"Load"}):
-#             #nodal_capacities_c = c.df.groupby(["location", "carrier"])[opt_name.get(c.name, "p") + "_nom_opt"].sum()
-#             nodal_capacities_c = c.df[opt_name.get(c.name, "p") + "_nom_opt"]
-#            # print([(c.list_name,) + t for t in nodal_capacities_c.index])
-#             index = pd.MultiIndex.from_tuples([(c.list_name,t) for t in nodal_capacities_c.index])
-#             nodal_capacities = nodal_capacities.reindex(index | nodal_capacities.index)
-#             nodal_capacities.loc[index, label] = nodal_capacities_c.values
-#         # df = pd.concat([nodal_capacities, df], axis=1)
-#     nodal_capacities.to_csv("notebook/data/nodal_capacities.csv")
-#     return nodal_capacities
+def add_extra_generator(n, solve_opts):
+    extra_generator = solve_opts.get('extra_generator')
+
+    if extra_generator == 'load_shedding':
+        n.add("Carrier", "Load")
+        n.madd("Generator", n.buses.index, " load",
+               bus=n.buses.index,
+               carrier='load',
+               #sign=1e-3, # Adjust sign to measure p and p_nom in kW instead of MW
+               marginal_cost=1e6, # Eur/kWh
+               # intersect between macroeconomic and surveybased
+               # willingness to pay
+               # http://journal.frontiersin.org/article/10.3389/fenrg.2015.00055/full
+               p_nom=1e9 # kW
+               )
+    else:
+        Nyears = n.snapshot_weightings.sum() / 8760.
+        costs = "data/costs.csv"
+        costs = load_costs(Nyears, tech_costs = costs, config = snakemake.config['costs'], elec_config = snakemake.config['electricity'])
+        ppl = load_powerplants(ppl_fn='resources/powerplants.csv')
+        carriers = extra_generator
+
+        _add_missing_carriers_from_costs(n, costs, carriers)
+
+        ppl = (ppl.query('carrier in @carriers').join(costs, on='carrier')
+               .rename(index=lambda s: 'C' + str(s)))
+
+        logger.info('Adding {} generators with capacities [MW] \n{}'
+                    .format(len(ppl), ppl.groupby('carrier').p_nom.sum()))
+
+        n.madd("Generator", ppl.index,
+               carrier=ppl.carrier,
+               bus=ppl.bus,
+               p_nom=ppl.p_nom,
+               efficiency=ppl.efficiency,
+               marginal_cost=ppl.marginal_cost,
+               capital_cost=0)
+
+        logger.warning(f'Capital costs for conventional generators put to 0 EUR/MW.')
+
+    return n
+
 
 
 def set_parameters_from_optimized(n, networks_dict):
@@ -139,7 +145,7 @@ def set_parameters_from_optimized(n, networks_dict):
     gen_extend_i_exclude_biomass = [elem for i, elem in enumerate(gen_extend_i) if elem not in biomass_extend_index]
     n.generators.loc[gen_extend_i, 'p_nom'] = gen_capacities.loc[gen_extend_i,:].mean(axis=1)
     n.generators.loc[gen_extend_i, 'p_nom_extendable'] = False
-    n.generators.loc[biomass_extend_index, 'p_nom_extendable'] = True
+   # n.generators.loc[biomass_extend_index, 'p_nom_extendable'] = True
 
 
     stor_extend_i = n.storage_units.index[n.storage_units.p_nom_extendable]
@@ -194,7 +200,8 @@ if __name__ == "__main__":
         Path(tmpdir).mkdir(parents=True, exist_ok=True)
 
     n = pypsa.Network(snakemake.input.unprepared)
-    # n_optim = pypsa.Network(snakemake.input.optimized)
+    add_extra_generator(n, snakemake.config['solving']['options'])
+    n_optim = pypsa.Network(snakemake.input.optimized)
     n = set_parameters_from_optimized(n, networks_dict)
     #del n_optim
 

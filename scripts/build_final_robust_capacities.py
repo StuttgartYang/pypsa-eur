@@ -22,9 +22,9 @@ if __name__ == "__main__":
         from _helpers import mock_snakemake
         snakemake = mock_snakemake('build_robust_capacities', network='elec', simpl='',
                            clusters='5', ll='copt', opts='Co2L-24H', capacitiy_years='2013')
-        network_dir = os.path.join('..', 'results', 'networks','robust_capacities_biomass')
+        network_dir = os.path.join('..', 'results', 'networks','robust_capacities_extra_generator')
     else:
-        network_dir = os.path.join('results', 'networks', 'robust_capacities_biomass')
+        network_dir = os.path.join('results', 'networks', 'robust_capacities_extra_generator')
     configure_logging(snakemake)
 
     def expand_from_wildcard(key):
@@ -46,4 +46,5 @@ if __name__ == "__main__":
     print(networks_dict)
 
     nodal_capacities = calculate_nodal_capacities(networks_dict)
+    nodal_capacities["robust_capacities"] = nodal_capacities.mean(axis=1)
     nodal_capacities.to_csv(snakemake.output[0])
