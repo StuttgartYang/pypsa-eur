@@ -367,7 +367,7 @@ rule build_optimized_capacities_iteration1:
     threads: 4
     resources: mem=(lambda w: 5000 + 372 * int(w.clusters))
     shadow: "shallow"
-    script: "scripts/build_optimized_capacities.py"
+    script: "scripts/build_optimized_capacities_iteration1.py"
 
 rule build_optimized_capacities_iteration2:
     input:
@@ -382,7 +382,7 @@ rule build_optimized_capacities_iteration2:
     threads: 4
     resources: mem=(lambda w: 5000 + 372 * int(w.clusters))
     shadow: "shallow"
-    script: "scripts/build_optimized_capacities.py"
+    script: "scripts/build_optimized_capacities_iteration2.py"
 
 rule build_optimized_capacities_iteration3:
     input:
@@ -397,7 +397,7 @@ rule build_optimized_capacities_iteration3:
     threads: 4
     resources: mem=(lambda w: 5000 + 372 * int(w.clusters))
     shadow: "shallow"
-    script: "scripts/build_optimized_capacities.py"
+    script: "scripts/build_optimized_capacities_iteration3.py"
 
 rule build_robust_capacities_extra_generator_iteration4:
     input: solved_biomass_networks = expand("results/networks/optimized_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_iteration3.nc", **config['scenario']),
@@ -411,7 +411,7 @@ rule build_robust_capacities_extra_generator_iteration4:
     threads: 4
     resources: mem=(lambda w: 5000 + 372 * int(w.clusters))
     shadow: "shallow"
-    script: "scripts/build_robust_capacities_extra_generator.py"
+    script: "scripts/build_robust_capacities_extra_generator_iteration4.py"
 
 rule build_robust_capacities_iteration5:
     input: expand("results/networks/robust_capacities_extra_generator/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario'])

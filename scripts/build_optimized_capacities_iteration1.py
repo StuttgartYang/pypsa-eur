@@ -103,13 +103,13 @@ def calculate_nodal_capacities(networks_dict):
             nodal_capacities = nodal_capacities.reindex(index | nodal_capacities.index)
             nodal_capacities.loc[index, label] = nodal_capacities_c.values
         # df = pd.concat([nodal_capacities, df], axis=1)
-    print(nodal_capacities)
     nodal_capacities.to_csv("notebook/data/nodal_capacities.csv")
     return nodal_capacities
 
 
 def set_parameters_from_optimized(n, networks_dict):
     nodal_capacities = calculate_nodal_capacities(networks_dict)
+
 
     # lines_typed_i = n.lines.index[n.lines.type != '']
     # n.lines.loc[lines_typed_i, 'num_parallel'] = \
@@ -160,7 +160,7 @@ def set_parameters_from_optimized(n, networks_dict):
 if __name__ == "__main__":
     if 'snakemake' not in globals():
         from _helpers import mock_snakemake
-        snakemake = mock_snakemake('build_robust_capacities', network='elec', simpl='',
+        snakemake = mock_snakemake('build_optimized_capacities', network='elec', simpl='',
                            clusters='5', ll='copt', opts='Co2L-24H', capacitiy_years='2013')
         network_dir = os.path.join('..', 'results', 'networks')
     else:
@@ -180,10 +180,16 @@ if __name__ == "__main__":
             ll = [l for l in ll if l[0] == snakemake.wildcards.ll[0]]
     else:
         ll = [snakemake.wildcards.ll]
+    networks = snakemake.input.solved_networks
+    print(networks)
+    for network in iteritems(networks):
+        print(network)
+        print(network.wildcards)
+
 
     networks_dict = {(capacity_year) :
         os.path.join(network_dir, capacity_year, f'elec_s{simpl}_'
-                                  f'{clusters}_ec_l{l}_{opts}.nc')
+                                  f'{clusters}_ec_l{l}_{opts}_iteration0.nc')
                      for capacity_year in snakemake.config["scenario"]["capacity_years"]
                      for simpl in expand_from_wildcard("simpl")
                      for clusters in expand_from_wildcard("clusters")
