@@ -413,8 +413,21 @@ rule build_robust_capacities_extra_generator_iteration4:
     shadow: "shallow"
     script: "scripts/build_robust_capacities_extra_generator.py"
 
+rule build_robust_capacities_iteration5:
+    input: expand("results/networks/robust_capacities_extra_generator/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario'])
+    output: "results/networks/final_robust_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc"
+    log:
+        solver=normpath("logs/build_robust_capacities_iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_solver.log"),
+        python="logs/build_robust_capacities_iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_python.log",
+        memory="logs/build_robust_capacities_iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_memory.log"
+    benchmark: "benchmarks/build_robust_capacities_iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}"
+    threads: 4
+    resources: mem=5000
+    shadow: "shallow"
+    script: "scripts/build_robust_capacities_iteration5.py"
+
 rule build_final_robust_capacities:
-    input: solved_biomass_networks = expand("results/networks/robust_capacities_extra_generator/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario']),
+    input: expand("results/networks/final_robust_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario']),
     output: "results/networks/final_robust_capacities/robust_capacities.csv"
     log:
         solver=normpath("logs/build_final_robust_capacities/robust_capacities.log"),
