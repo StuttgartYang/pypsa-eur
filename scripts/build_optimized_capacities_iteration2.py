@@ -69,9 +69,9 @@ if __name__ == "__main__":
         from _helpers import mock_snakemake
         snakemake = mock_snakemake('build_optimized_capacities', network='elec', simpl='',
                            clusters='5', ll='copt', opts='Co2L-24H', capacitiy_years='2013')
-        network_dir = os.path.join('..', 'results', 'networks')
+        network_dir = os.path.join('..', 'results', 'networks', 'optimized_capacities')
     else:
-        network_dir = os.path.join('results', 'networks')
+        network_dir = os.path.join('results', 'networks', 'optimized_capacities')
     configure_logging(snakemake)
 
     def expand_from_wildcard(key):
