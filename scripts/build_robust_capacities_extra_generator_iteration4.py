@@ -140,7 +140,7 @@ if __name__ == "__main__":
 
     networks_dict = {(capacity_year) :
         os.path.join(network_dir, f'elec_s{simpl}_'
-                                  f'{clusters}_ec_l{l}_{opts}_{capacity_year}.nc')
+                                  f'{clusters}_ec_l{l}_{opts}_{capacity_year}_iteration3.nc')
                      for capacity_year in snakemake.config["scenario"]["capacity_years"]
                      for simpl in expand_from_wildcard("simpl")
                      for clusters in expand_from_wildcard("clusters")
