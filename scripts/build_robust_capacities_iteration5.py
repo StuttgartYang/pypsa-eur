@@ -54,7 +54,7 @@ import numpy as np
 from pathlib import Path
 from vresutils.benchmark import memory_logger
 from solve_network import solve_network, prepare_network
-from build_robust_capacities import calculate_nodal_capacities
+from build_optimized_capacities_iteration1 import calculate_nodal_capacities
 from six import iteritems
 import pandas as pd
 import os
