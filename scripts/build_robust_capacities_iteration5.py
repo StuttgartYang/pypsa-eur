@@ -136,7 +136,7 @@ if __name__ == "__main__":
         ll = [snakemake.wildcards.ll]
 
     networks_dict = {(capacity_year) :
-        os.path.join(network_dir, capacity_year, f'elec_s{simpl}_'
+        os.path.join(network_dir, f'elec_s{simpl}_'
                                   f'{clusters}_ec_l{l}_{opts}_{capacity_year}.nc')
                      for capacity_year in snakemake.config["scenario"]["capacity_years"]
                      for simpl in expand_from_wildcard("simpl")
