@@ -414,7 +414,8 @@ rule build_robust_capacities_extra_generator_iteration4:
     script: "scripts/build_robust_capacities_extra_generator_iteration4.py"
 
 rule build_robust_capacities_iteration5:
-    input: expand("results/networks/robust_capacities_extra_generator/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario'])
+    input: expand("results/networks/robust_capacities_extra_generator/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario']),
+        unprepared="networks/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc"
     output: "results/networks/final_robust_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc"
     log:
         solver=normpath("logs/build_robust_capacities_iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_solver.log"),
