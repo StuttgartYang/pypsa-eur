@@ -181,11 +181,6 @@ if __name__ == "__main__":
     else:
         ll = [snakemake.wildcards.ll]
     networks = snakemake.input.solved_networks
-    print(networks)
-    for network in iteritems(networks):
-        print(network)
-        print(network.wildcards)
-
 
     networks_dict = {(capacity_year) :
         os.path.join(network_dir, 'iteration0', f'elec_s{simpl}_'
