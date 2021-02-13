@@ -440,6 +440,8 @@ rule build_final_robust_capacities:
     shadow: "shallow"
     script: "scripts/build_final_robust_capacities.py"
 
+
+
 # rule solve_operations_network_rh:
 #     input:
 #         unprepared="networks/"+config["energy_year"]+"/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
@@ -468,20 +470,30 @@ rule build_final_robust_capacities:
 #     script: "scripts/plot_network.py"
 #
 #
-# def input_make_summary(w):
-#     # It's mildly hacky to include the separate costs input as first entry
-#     if w.ll.endswith("all"):
-#         ll = config["scenario"]["ll"]
-#         if len(w.ll) == 4:
-#             ll = [l for l in ll if l[0] == w.ll[0]]
-#     else:
-#         ll = w.ll
-#     return ([COSTS] +
-#             expand("results/networks/"+config["energy_year"]+"/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
-#                    network=w.network,
-#                    ll=ll,
-#                    **{k: config["scenario"][k] if getattr(w, k) == "all" else getattr(w, k)
-#                       for k in ["simpl", "clusters", "opts"]}))
+def input_make_summary(w):
+    # It's mildly hacky to include the separate costs input as first entry
+    if w.ll.endswith("all"):
+        ll = config["scenario"]["ll"]
+        if len(w.ll) == 4:
+            ll = [l for l in ll if l[0] == w.ll[0]]
+    else:
+        ll = w.ll
+    return ([COSTS] +
+            expand("results/networks/"+config["energy_year"]+"/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
+                   network=w.network,
+                   ll=ll,
+                   **{k: config["scenario"][k] if getattr(w, k) == "all" else getattr(w, k)
+                      for k in ["simpl", "clusters", "opts"]}))
+
+rule make_summary_by_folder:
+    input: expand("results/networks/iteration0/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario']),
+    output:
+        costs='results/summary/iteration0/csvs/costs.csv',
+        capacity='results/summary/iteration0/csvs/capacity.csv',
+        curtailment='results/summary/iteration0/csvs/curtailment.csv',
+        energy='results/summary/iteration0/csvs/energy.csv',
+    script: "scripts/make_summary_by_folder.py"
+
 #
 #
 # rule make_summary:
