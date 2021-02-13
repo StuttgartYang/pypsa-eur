@@ -342,7 +342,7 @@ rule solve_all_networks_robust_capacities_extra_generator:
 
 rule solve_network_iteration0:
     input: "networks/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc"
-    output: "results/networks/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_iteration0.nc"
+    output: "results/networks/iteration0/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc"
     log:
         solver=normpath("logs/solve_network/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_solver.log"),
         python="logs/solve_network/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_python.log",
@@ -356,9 +356,9 @@ rule solve_network_iteration0:
 
 rule build_optimized_capacities_iteration1:
     input:
-       solved_networks=expand("results/networks/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_iteration0.nc", **config['scenario']),
+       solved_networks=expand("results/networks/iteration0/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario']),
        unprepared="networks/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
-    output: "results/networks/optimized_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_iteration1.nc"
+    output: "results/networks/iteration1/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc"
     log:
         solver=normpath("logs/build_optimized_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_solver.log"),
         python="logs/build_optimized_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_python.log",
@@ -371,9 +371,9 @@ rule build_optimized_capacities_iteration1:
 
 rule build_optimized_capacities_iteration2:
     input:
-       solved_networks=expand("results/networks/optimized_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_iteration1.nc", **config['scenario']),
+       solved_networks=expand("results/networks/iteration1/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario']),
        unprepared="networks/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
-    output: "results/networks/optimized_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_iteration2.nc"
+    output: "results/networks/iteration2/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc"
     log:
         solver=normpath("logs/build_optimized_capacities_iteration2/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_solver.log"),
         python="logs/build_optimized_capacities_iteration2/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_python.log",
@@ -386,9 +386,9 @@ rule build_optimized_capacities_iteration2:
 
 rule build_optimized_capacities_iteration3:
     input:
-       solved_networks=expand("results/networks/optimized_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_iteration2.nc", **config['scenario']),
+       solved_networks=expand("results/networks/iteration2/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario']),
        unprepared="networks/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
-    output: "results/networks/optimized_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_iteration3.nc"
+    output: "results/networks/iteration3/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc"
     log:
         solver=normpath("logs/build_optimized_capacities_iteration3/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_solver.log"),
         python="logs/build_optimized_capacities_iteration3/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_python.log",
@@ -400,9 +400,9 @@ rule build_optimized_capacities_iteration3:
     script: "scripts/build_optimized_capacities_iteration3.py"
 
 rule build_robust_capacities_extra_generator_iteration4:
-    input: solved_biomass_networks = expand("results/networks/optimized_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_iteration3.nc", **config['scenario']),
+    input: solved_biomass_networks = expand("results/networks/iteration3/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario']),
         unprepared="networks/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc"
-    output: "results/networks/robust_capacities_extra_generator/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc"
+    output: "results/networks/iteration4/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc"
     log:
         solver=normpath("logs/build_robust_biomass_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_solver.log"),
         python="logs/build_robust_biomass_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_python.log",
@@ -414,9 +414,9 @@ rule build_robust_capacities_extra_generator_iteration4:
     script: "scripts/build_robust_capacities_extra_generator_iteration4.py"
 
 rule build_robust_capacities_iteration5:
-    input: expand("results/networks/robust_capacities_extra_generator/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario']),
+    input: expand("results/networks/iteration4/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario']),
         unprepared="networks/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc"
-    output: "results/networks/final_robust_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc"
+    output: "results/networks/iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc"
     log:
         solver=normpath("logs/build_robust_capacities_iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_solver.log"),
         python="logs/build_robust_capacities_iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_python.log",
@@ -428,8 +428,8 @@ rule build_robust_capacities_iteration5:
     script: "scripts/build_robust_capacities_iteration5.py"
 
 rule build_final_robust_capacities:
-    input: expand("results/networks/final_robust_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario']),
-    output: "results/networks/final_robust_capacities/robust_capacities.csv"
+    input: expand("results/networks/iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario']),
+    output: "results/networks/iteration5/robust_capacities.csv"
     log:
         solver=normpath("logs/build_final_robust_capacities/robust_capacities.log"),
         python="logs/build_final_robust_capacities/robust_capacities.log",

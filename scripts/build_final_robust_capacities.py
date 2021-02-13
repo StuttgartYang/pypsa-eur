@@ -20,11 +20,11 @@ idx = pd.IndexSlice
 if __name__ == "__main__":
     if 'snakemake' not in globals():
         from _helpers import mock_snakemake
-        snakemake = mock_snakemake('build_robust_capacities', network='elec', simpl='',
+        snakemake = mock_snakemake('build_final_robust_capacities', network='elec', simpl='',
                            clusters='5', ll='copt', opts='Co2L-24H', capacitiy_years='2013')
-        network_dir = os.path.join('..', 'results', 'networks','robust_capacities_extra_generator')
+        network_dir = os.path.join('..', 'results', 'networks')
     else:
-        network_dir = os.path.join('results', 'networks', 'robust_capacities_extra_generator')
+        network_dir = os.path.join('results', 'networks')
     configure_logging(snakemake)
 
     def expand_from_wildcard(key):
@@ -36,7 +36,7 @@ if __name__ == "__main__":
         Path(tmpdir).mkdir(parents=True, exist_ok=True)
 
     networks_dict = {(capacity_year) :
-        os.path.join(network_dir, f'elec_s{simpl}_'
+        os.path.join(network_dir, 'iteration5', f'elec_s{simpl}_'
                                   f'{clusters}_ec_l{l}_{opts}_{capacity_year}.nc')
                      for capacity_year in snakemake.config["scenario"]["capacity_years"]
                      for simpl in snakemake.config["scenario"]["simpl"]

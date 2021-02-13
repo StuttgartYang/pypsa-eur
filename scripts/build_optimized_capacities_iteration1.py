@@ -160,7 +160,7 @@ def set_parameters_from_optimized(n, networks_dict):
 if __name__ == "__main__":
     if 'snakemake' not in globals():
         from _helpers import mock_snakemake
-        snakemake = mock_snakemake('build_optimized_capacities', network='elec', simpl='',
+        snakemake = mock_snakemake('build_optimized_capacities_iteration1', network='elec', simpl='',
                            clusters='5', ll='copt', opts='Co2L-24H', capacitiy_years='2013')
         network_dir = os.path.join('..', 'results', 'networks')
     else:
@@ -188,8 +188,8 @@ if __name__ == "__main__":
 
 
     networks_dict = {(capacity_year) :
-        os.path.join(network_dir, capacity_year, f'elec_s{simpl}_'
-                                  f'{clusters}_ec_l{l}_{opts}_iteration0.nc')
+        os.path.join(network_dir, 'iteration0', f'elec_s{simpl}_'
+                                  f'{clusters}_ec_l{l}_{opts}_{capacity_year}')
                      for capacity_year in snakemake.config["scenario"]["capacity_years"]
                      for simpl in expand_from_wildcard("simpl")
                      for clusters in expand_from_wildcard("clusters")
