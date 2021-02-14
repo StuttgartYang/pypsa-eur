@@ -366,9 +366,9 @@ def calculate_weighted_prices(n,label,weighted_prices):
 
 
 outputs = ["costs",
-           "curtailment",
+           # "curtailment",
            "energy",
-           "capacity",
+           # "capacity",
            # "supply",
            # "supply_energy",
            # "prices",
@@ -381,6 +381,7 @@ def make_summaries(networks_dict):
 
     #columns = pd.MultiIndex.from_tuples(networks_dict.keys(),names=["capacity_years"])
     columns = list(networks_dict.keys())
+    print(columns)
 
     dfs = {}
 

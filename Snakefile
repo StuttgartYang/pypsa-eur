@@ -489,8 +489,8 @@ rule make_summary_by_folder:
     input: expand("results/networks/iteration0/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario']),
     output:
         costs='results/summary/iteration0/csvs/costs.csv',
-        capacity='results/summary/iteration0/csvs/capacity.csv',
-        curtailment='results/summary/iteration0/csvs/curtailment.csv',
+#         capacity='results/summary/iteration0/csvs/capacity.csv',
+#         curtailment='results/summary/iteration0/csvs/curtailment.csv',
         energy='results/summary/iteration0/csvs/energy.csv',
     script: "scripts/make_summary_by_folder.py"
 
