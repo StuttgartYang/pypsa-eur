@@ -96,13 +96,13 @@ def set_parameters_from_optimized(n, networks_dict, solve_opts):
     #
     gen_extend_i = n.generators.index[n.generators.p_nom_extendable]
     gen_capacities = nodal_capacities.loc['generators']
-    gen_extend_i_exclude_biomass = [elem for i, elem in enumerate(gen_extend_i) if elem not in biomass_extend_index]
+   # gen_extend_i_exclude_biomass = [elem for i, elem in enumerate(gen_extend_i) if elem not in biomass_extend_index]
     n.generators.loc[gen_extend_i, 'p_nom'] = gen_capacities.loc[gen_extend_i,:].mean(axis=1)
     n.generators.loc[gen_extend_i, 'p_nom_extendable'] = False
     extra_generator = solve_opts.get('extra_generator')
-    # if extra_generator in snakemake.config["electricity"]["conventional_carriers"]:
-    #     generator_extend_index = n.generators.index[n.generators.carrier == extra_generator]
-    #     n.generators.loc[generator_extend_index, 'p_nom_extendable'] = True
+    if extra_generator in snakemake.config["electricity"]["conventional_carriers"]:
+        generator_extend_index = n.generators.index[n.generators.carrier == extra_generator]
+        n.generators.loc[generator_extend_index, 'p_nom_extendable'] = True
 
 
     stor_extend_i = n.storage_units.index[n.storage_units.p_nom_extendable]
@@ -157,7 +157,7 @@ if __name__ == "__main__":
         Path(tmpdir).mkdir(parents=True, exist_ok=True)
 
     n = pypsa.Network(snakemake.input.unprepared)
-    add_extra_generator(n, snakemake.config['solving']['options'])
+   # add_extra_generator(n, snakemake.config['solving']['options'])
     n = set_parameters_from_optimized(n, networks_dict, snakemake.config['solving']['options'])
     #del n_optim
 
