@@ -486,12 +486,12 @@ def input_make_summary(w):
                       for k in ["simpl", "clusters", "opts"]}))
 
 rule make_summary_by_folder:
-    input: expand("results/networks/iteration0/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario']),
+    input: expand("results/networks/"+config["make_summary"]["iteration"]+"/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario']),
     output:
-        costs='results/summary/iteration0/csvs/costs.csv',
+        costs='results/summary/csvs/'+config['make_summary']['iteration']+'/costs.csv',
 #         capacity='results/summary/iteration0/csvs/capacity.csv',
 #         curtailment='results/summary/iteration0/csvs/curtailment.csv',
-        energy='results/summary/iteration0/csvs/energy.csv',
+        energy=']+'/results/summary/csvs/'+config['make_summary']['iteration']+'/energy.csv',
     script: "scripts/make_summary_by_folder.py"
 
 #

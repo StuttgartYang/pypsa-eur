@@ -101,7 +101,9 @@ def plot_costs(infn, fn=None):
     ax.grid(axis="y")
 
     ax.legend(handles,labels,ncol=4,loc="upper left")
-
+    cost_total = df.loc[new_index,new_columns].sum(axis=0)
+    for i, v in enumerate(cost_total):
+        ax.text(i,v, str("%.2f" %v))
 
     fig.tight_layout()
 
@@ -175,8 +177,8 @@ if __name__ == "__main__":
 
         # for item in ["costs","energy","capacities","original_curtailment","load_shedding"]:
         for item in ["costs", "energy"]:
-            snakemake.input[item] = '../results/summary/iteration0/csvs/{item}.csv'.format(item=item)
-            snakemake.output[item] = '../results/summary/iteration0/graphs/{item}.jpg'.format(item=item)
+            snakemake.input[item] = '../results/summary/csvs/'+config['make_summary']['iteration']+'/{item}.csv'.format(item=item)
+            snakemake.output[item] = '../results/summary/graphs/'+config['make_summary']['iteration']+'/{item}.jpg'.format(item=item)
 
     plot_costs(snakemake.input["costs"], snakemake.output["costs"])
 
