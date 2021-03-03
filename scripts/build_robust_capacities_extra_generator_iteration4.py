@@ -88,7 +88,7 @@ def set_parameters_from_optimized(n, networks_dict, solve_opts):
     # n.lines.loc[lines_extend_i, 's_nom_min'] = lines_capacities.loc[lines_extend_i, :].mean(axis=1)
     # n.lines.loc[lines_extend_i, 's_nom_extendable'] = False
 
-    links_dc_i = n.links.index[n.links.carrier == 'DC']
+    links_dc_i = n.links.index[n.links.p_nom_extendable]
     links_capacities = nodal_capacities.loc['links']
     n.links.loc[links_dc_i, 'p_nom'] = links_capacities.loc[links_dc_i,:].mean(axis=1)
     n.links.loc[links_dc_i, 'p_nom_extendable'] = False
@@ -100,9 +100,15 @@ def set_parameters_from_optimized(n, networks_dict, solve_opts):
     n.generators.loc[gen_extend_i, 'p_nom'] = gen_capacities.loc[gen_extend_i,:].mean(axis=1)
     n.generators.loc[gen_extend_i, 'p_nom_extendable'] = False
     extra_generator = solve_opts.get('extra_generator')
+    print("extra_generator")
+    print(extra_generator)
+    print(snakemake.config["electricity"]["conventional_carriers"])
     if extra_generator in snakemake.config["electricity"]["conventional_carriers"]:
+        print("here1")
         generator_extend_index = n.generators.index[n.generators.carrier == extra_generator]
         n.generators.loc[generator_extend_index, 'p_nom_extendable'] = True
+        print(generator_extend_index)
+        print("here")
 
 
     stor_extend_i = n.storage_units.index[n.storage_units.p_nom_extendable]
@@ -113,7 +119,10 @@ def set_parameters_from_optimized(n, networks_dict, solve_opts):
     stores_extend_i = n.stores.index[n.stores.e_nom_extendable]
     stores_capacities = nodal_capacities.loc['stores']
     n.stores.loc[stores_extend_i, 'e_nom'] = stores_capacities.loc[stores_extend_i, :].mean(axis=1)
-    n.stores.loc[stores_extend_i, 'e_nom_extendable'] = False
+    n.stores.loc[stores_extend_i, 'e_nom_extendable']\
+
+    # n.stores.loc[n.stores.carrier == "co2 stored", 'e_nom_max'] == 5e8
+    # n.stores.loc[n.stores.carrier == "co2 stored", 'e_nom'] == 5e8
     return n
 
 if __name__ == "__main__":
@@ -157,7 +166,7 @@ if __name__ == "__main__":
         Path(tmpdir).mkdir(parents=True, exist_ok=True)
 
     n = pypsa.Network(snakemake.input.unprepared)
-   # add_extra_generator(n, snakemake.config['solving']['options'])
+    #add_extra_generator(n, snakemake.config['solving']['options'])
     n = set_parameters_from_optimized(n, networks_dict, snakemake.config['solving']['options'])
     #del n_optim
 

@@ -102,8 +102,17 @@ def assign_carriers(n):
 def calculate_costs(n, label, costs):
 
     for c in n.iterate_components(n.branch_components|n.controllable_one_port_components^{"Load"}):
-        capital_costs = c.df.capital_cost*c.df[opt_name.get(c.name,"p") + "_nom_opt"]
+        biomass_capital_costs = 0
+        # if c.name == "Generator":
+        #     if "biomass" in c.df.carrier.unique():
+        #         biomass_capital_costs = c.df.capital_cost*c.df[opt_name.get(c.name,"p") + "_nom"]
+        #         biomass_capital_costs_grouped = biomass_capital_costs.groupby(c.df.carrier).sum()
+        #         print("biomass_capital_costs_grouped")
+        #         print(biomass_capital_costs_grouped)
+        capital_costs = c.df.capital_cost * c.df[opt_name.get(c.name, "p") + "_nom_opt"]
         capital_costs_grouped = capital_costs.groupby(c.df.carrier).sum()
+        print("capital_costs_grouped")
+        print(capital_costs_grouped)
 
         # Index tuple(s) indicating the newly to-be-added row(s)
         raw_index = tuple([[c.list_name],["capital"],list(capital_costs_grouped.index)])
@@ -164,7 +173,7 @@ def include_in_summary(summary, multiindexprefix, label, item):
 
     return summary
 
-def calculate_capacity(n,label,capacity):
+def calculate_capacities(n,label,capacity):
 
     for c in n.iterate_components(n.one_port_components):
         if 'p_nom_opt' in c.df.columns:
@@ -366,9 +375,9 @@ def calculate_weighted_prices(n,label,weighted_prices):
 
 
 outputs = ["costs",
-           # "curtailment",
+           "curtailment",
            "energy",
-           # "capacity",
+           "capacities",
            # "supply",
            # "supply_energy",
            # "prices",
@@ -431,9 +440,9 @@ if __name__ == "__main__":
         from _helpers import mock_snakemake
         snakemake = mock_snakemake('make_summary_by_folder', network='elec', simpl='',
                            clusters='5', ll='copt', opts='Co2L-24H', country='all')
-        network_dir = os.path.join('..', 'results', 'networks biomass')
+        network_dir = os.path.join('..', 'results', 'networks')
     else:
-        network_dir = os.path.join('results', 'networks biomass')
+        network_dir = os.path.join('results', 'networks')
     configure_logging(snakemake)
 
 

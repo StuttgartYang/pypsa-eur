@@ -131,7 +131,7 @@ def set_parameters_from_optimized(n, networks_dict):
     # n.lines.loc[lines_extend_i, 's_nom_min'] = lines_capacities.loc[lines_extend_i, :].mean(axis=1)
     # n.lines.loc[lines_extend_i, 's_nom_extendable'] = False
 
-    links_dc_i = n.links.index[n.links.carrier == 'DC']
+    links_dc_i = n.links.index[n.links.p_nom_extendable]
     links_capacities = nodal_capacities.loc['links']
     n.links.loc[links_dc_i, 'p_nom_max'] = links_capacities.loc[links_dc_i,:].max(axis=1)
     n.links.loc[links_dc_i, 'p_nom_min'] = links_capacities.loc[links_dc_i,:].mean(axis=1)
