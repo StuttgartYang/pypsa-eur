@@ -100,16 +100,11 @@ def set_parameters_from_optimized(n, networks_dict, solve_opts):
     n.generators.loc[gen_extend_i, 'p_nom'] = gen_capacities.loc[gen_extend_i,:].mean(axis=1)
     n.generators.loc[gen_extend_i, 'p_nom_extendable'] = False
     extra_generator = solve_opts.get('extra_generator')
-    print("extra_generator")
-    print(extra_generator)
-    print(snakemake.config["electricity"]["conventional_carriers"])
-    if extra_generator in snakemake.config["electricity"]["conventional_carriers"]:
-        print("here1")
+    conventional_carriers = snakemake.config["electricity"]["conventional_carriers"]
+    renewable_carriers = snakemake.config['renewable']
+    if extra_generator in (conventional_carriers | renewable_carriers):
         generator_extend_index = n.generators.index[n.generators.carrier == extra_generator]
         n.generators.loc[generator_extend_index, 'p_nom_extendable'] = True
-        print(generator_extend_index)
-        print("here")
-
 
     stor_extend_i = n.storage_units.index[n.storage_units.p_nom_extendable]
     stor_capacities = nodal_capacities.loc['storage_units']
