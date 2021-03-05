@@ -21,23 +21,23 @@ wildcard_constraints:
     opts="[-+a-zA-Z0-9\.]*"
 
 
-rule cluster_all_networks:
-    input: expand("networks/elec_s{simpl}_{clusters}.nc", **config['scenario'])
-
-
-rule extra_components_all_networks:
-    input: expand("networks/elec_s{simpl}_{clusters}_ec.nc", **config['scenario'])
-
-
-rule prepare_all_networks:
-    input: expand("networks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc", **config['scenario'])
-
-
-rule solve_all_networks:
-    input: expand("results/networks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc", **config['scenario'])
-
-rule solve_all_networks_robust_capacities_extra_generator:
-    input: expand("results/networks/robust_capacities_extra_generator/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario'])
+# rule cluster_all_networks:
+#     input: expand("networks/elec_s{simpl}_{clusters}.nc", **config['scenario'])
+#
+#
+# rule extra_components_all_networks:
+#     input: expand("networks/elec_s{simpl}_{clusters}_ec.nc", **config['scenario'])
+#
+#
+# rule prepare_all_networks:
+#     input: expand("networks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc", **config['scenario'])
+#
+#
+# rule solve_all_networks:
+#     input: expand("results/networks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc", **config['scenario'])
+#
+# rule solve_all_networks_robust_capacities_extra_generator:
+#     input: expand("results/networks/robust_capacities_extra_generator/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario'])
 
 
 # if config['enable'].get('prepare_links_p_nom', False):
@@ -439,6 +439,20 @@ rule build_final_robust_capacities:
     resources: mem=5000
     shadow: "shallow"
     script: "scripts/build_final_robust_capacities.py"
+
+rule solve_operations_network_with_robust_capacities:
+    input: capacities = "results/networks/iteration5/robust_capacities.csv",
+        unprepared="networks/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc"
+    output: "results/networks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op.nc"
+    log:
+        solver=normpath("logs/solve_operations_network_with_robust_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_solver.log"),
+        python="logs/solve_operations_network_with_robust_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_python.log",
+        memory="logs/solve_operations_network_with_robust_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_memory.log",
+    benchmark: "benchmarks/solve_operations_network_with_robust_capacities/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op"
+    threads: 4
+    resources: mem=5000
+    shadow: "shallow"
+    script: "scripts/solve_operations_network_with_robust_capacities.py"
 
 # rule solve_operations_network_rh:
 #     input:
