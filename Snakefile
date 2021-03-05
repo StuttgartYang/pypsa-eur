@@ -440,22 +440,6 @@ rule build_final_robust_capacities:
     shadow: "shallow"
     script: "scripts/build_final_robust_capacities.py"
 
-
-rule solve_operations_network_robust_capacities_iteration6:
-    input: expand("results/networks/iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario']),
-        unprepared="networks/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc"
-    output: #expand("results/networks/iteration6/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario'])
-        "results/networks/iteration6/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc"
-    log:
-        solver=normpath("logs/solve_operations_network_robust_capacities_iteration6/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_solver.log"),
-        python="logs/solve_operations_network_robust_capacities_iteration6/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_python.log",
-        memory="logs/solve_operations_network_robust_capacities_iteration6/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_memory.log"
-    benchmark: "benchmarks/solve_operations_network_robust_capacities_iteration6/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}"
-    threads: 4
-    resources: mem=5000
-    shadow: "shallow"
-    script: "scripts/solve_operations_network_robust_capacities.py"
-
 # rule solve_operations_network_rh:
 #     input:
 #         unprepared="networks/"+config["energy_year"]+"/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
@@ -504,11 +488,24 @@ rule make_summary_by_folder:
     output:
         costs='results/summary/csvs/'+config['make_summary']['iteration']+'/costs.csv',
         capacities='results/summary/csvs/'+config['make_summary']['iteration']+'/capacities.csv',
-        curtailment='results/summary/csvs/'+config['make_summary']['iteration']+'/curtailment.csv',
         energy='results/summary/csvs/'+config['make_summary']['iteration']+'/energy.csv',
     threads: 4
     resources: mem=5000
     script: "scripts/make_summary_by_folder.py"
+
+
+rule plot_summary_by_folder:
+    input:
+        costs='results/summary/csvs/'+config['make_summary']['iteration']+'/costs.csv',
+        capacities='results/summary/csvs/'+config['make_summary']['iteration']+'/capacities.csv',
+        energy='results/summary/csvs/'+config['make_summary']['iteration']+'/energy.csv'
+    output:
+        costs='results/summary/graphs/'+config['make_summary']['iteration']+'/costs.jpg',
+        capacities='results/summary/graphs/'+config['make_summary']['iteration']+'/capacities.jpg',
+        energy='results/summary/graphs/'+config['make_summary']['iteration']+'/energy.jpg'
+    threads: 4
+    resources: mem=5000
+    script: "scripts/plot_summary_by_folder.py"
 
 #
 #
