@@ -98,87 +98,21 @@ def set_parameters_from_optimized(n, n_optim):
     return n
 
 
-# def get_h2_bid(n, snapshots, node, link_charge, link_discharge):
-#     λ = n.buses_t.marginal_price.loc[snapshots, node+ " H2"].mean()
-#     charge_efficiency = n.links.efficiency[node + link_charge]
-#     discharge_efficiency = n.links.efficiency[node + link_discharge]
-#
-#     mu = n.stores_t.mu_state_of_charge.loc[snapshots, node + " H2"].sum()
-#     #mu = n.stores_t.mu_state_of_charge.loc[snapshots, node + " H2"].mean()
-#
-#     charging_bid = charge_efficiency * (λ + mu)
-#     discharging_bid = (λ + mu) / discharge_efficiency
-#     return charging_bid, discharging_bid
-
-def get_h2_bid(n, snapshots, node, link_charge, link_discharge):
-    λ = n.buses_t.marginal_price.loc[snapshots, node+ " H2"]
-    charge_efficiency = n.links.efficiency[node + link_charge]
-    discharge_efficiency = n.links.efficiency[node + link_discharge]
-    charging_bid = charge_efficiency * λ
-    discharging_bid = λ / discharge_efficiency
-    return charging_bid, discharging_bid
-
-
-def get_hydro_bid(n, snapshots, node):
-    λ = n.storage_units_t.mu_state_of_charge.loc[snapshots, node + " hydro"].mean()
-    discharge_efficiency = n.storage_units.loc[node + " hydro", "efficiency_dispatch"]
-    mu_lower = n.storage_units_t.mu_lower_state_of_charge.loc[snapshots, node + " hydro"].sum()
-    mu_upper = n.storage_units_t.mu_upper_state_of_charge.loc[snapshots, node + " hydro"].sum()
-    discharging_bid = (λ + (mu_lower - mu_upper)) / discharge_efficiency
-    return discharging_bid
-
-
 def get_store_demand_bid(n,  carrier, snapshots, node, link_charger, link_discharger):
     λ = n.buses_t.marginal_price.loc[:, node + " " + carrier]
-    # if carrier == "hydro":
-    #     n.links.efficiency[node + link_charger] = 1
     charge_efficiency = n.links.efficiency[node + link_charger]
     discharge_efficiency = n.links.efficiency[node + link_discharger]
-    if node + " " + carrier in n.stores_t.mu_lower_e.columns:
-        mu_lower = n.stores_t.mu_lower_e.loc[snapshots, node + " " + carrier]
-    else: mu_lower =0
-    if node + " " + carrier in n.stores_t.mu_upper_e.columns:
-        mu_upper = n.stores_t.mu_upper_e.loc[snapshots, node + " " + carrier]
-    else: mu_upper=0
     charging_bid = charge_efficiency * λ
     discharging_bid = λ
     return charging_bid, discharging_bid
 
-# def get_hydro_bid(n, snapshots, node):
-#     λ = n.buses_t.marginal_price.loc[snapshots, node].mean()
-#     discharge_efficiency = n.storage_units.loc[node + " hydro", "efficiency_dispatch"]
-#     mu = n.storage_units_t.mu_state_of_charge.loc[snapshots, node + " hydro"].sum()
-#     discharging_bid = (λ + mu) / discharge_efficiency
-#     return discharging_bid
-
-def solve_network_rh(n, config, solver_log=None, opts='', period='', **kwargs):
-    solver_options = config['solving']['solver'].copy()
-    solver_name = solver_options.pop('name')
-    cf_solving = config['solving']['options']
-    track_iterations = cf_solving.get('track_iterations', False)
-    min_iterations = cf_solving.get('min_iterations', 4)
-    max_iterations = cf_solving.get('max_iterations', 6)
-
-    # add to network for extra_functionality
-    n.config = config
-    n.opts = opts
-    freq = 3
-    length = len(n.snapshots)
-    if period == "3h":
-        loop_num = length - 1
-        kept = 1
-        overlap = 0
-
-    elif period == "2w":
-        window = 14 * 24 // freq
-        overlap = 7 * 24 // freq
-        kept = window - overlap
-        loop_num = length // kept
-    else:
-        print( "period should be 3h or 2w")
-
+def set_bidding_price(n, n_optim, storage_bidding):
     nodelist = n.buses[n.buses.carrier == "AC"].index
-    for carrier in n.stores.carrier.unique():
+    storage_carrier = storage_bidding.split('-')
+    if storage_carrier == "all":
+        storage_carrier = n.stores.carrier.unique()
+
+    for carrier in storage_carrier:
         if carrier == "H2":
             link_charger = " H2 Electrolysis"
             link_discharger = " H2 Fuel Cell"
@@ -194,11 +128,46 @@ def solve_network_rh(n, config, solver_log=None, opts='', period='', **kwargs):
                 n.links_t.marginal_cost.loc[n.snapshots, node + link_charger] = - charging_bid
                 n.links_t.marginal_cost[node + link_discharger] = 0
                 n.links_t.marginal_cost.loc[n.snapshots, node + link_discharger] = discharging_bid
+    return n
 
-    for i in range(loop_num):
+
+
+
+def solve_network_rh(n, config, solver_log=None, opts='', storage_bidding='all', **kwargs):
+    solver_options = config['solving']['solver'].copy()
+    solver_name = solver_options.pop('name')
+    cf_solving = config['solving']['options']
+    track_iterations = cf_solving.get('track_iterations', False)
+    min_iterations = cf_solving.get('min_iterations', 4)
+    max_iterations = cf_solving.get('max_iterations', 6)
+
+    # add to network for extra_functionality
+    n.config = config
+    n.opts = opts
+    freq = int(opts[1][0])
+
+    window = config['window'] * 24 // freq
+    overlap = config['overlap'] * 24 // freq
+    kept = window - overlap
+    length = len(n.snapshots)
+    # if period == "3h":
+    #     loop_num = length - 1
+    #     kept = 1
+    #     overlap = 0
+    #
+    # elif period == "2w":
+    #
+    #
+    #     window = 14 * 24 // freq
+    #     overlap = 7 * 24 // freq
+    #     kept = window - overlap
+    #     loop_num = length // kept
+    # else:
+    #     print("period should be 3h or 2w")
+    n = set_bidding_price(n,n_optim, storage_bidding)
+    for i in range(length // kept):
         # set initial state of charge
         snapshots = n.snapshots[i * kept:(i + 1) * kept + overlap]
-        print(snapshots)
 
         if i == 0:
             n.stores.e_initial = n_optim.stores_t.e.iloc[0]
@@ -216,8 +185,6 @@ def solve_network_rh(n, config, solver_log=None, opts='', period='', **kwargs):
                   min_iterations=min_iterations,
                   max_iterations=max_iterations,
                   extra_functionality=None, **kwargs)
-
-
     return n
 
 
@@ -226,7 +193,7 @@ if __name__ == "__main__":
     if 'snakemake' not in globals():
         from _helpers import mock_snakemake
         snakemake = mock_snakemake('solve_operations_network_rh', network='elec',
-                                   simpl='', clusters='40', ll='v1.0', opts='Co2L0p0-3H', period='2w')
+                                   simpl='', clusters='40', ll='v1.0', opts='Co2L0p0-3H', storage_bidding='H2-hydro-PHS-battery')
     configure_logging(snakemake)
 
     tmpdir = snakemake.config['solving'].get('tmpdir')
@@ -243,7 +210,7 @@ if __name__ == "__main__":
 
     config = snakemake.config
     opts = snakemake.wildcards.opts.split('-')
-    period = snakemake.wildcards.period
+    storage_bidding = snakemake.wildcards.storage_bidding
     #config['solving']['options']['skip_iterations'] = False
     config['solving']['options']['skip_iterations'] = True
 
@@ -251,7 +218,7 @@ if __name__ == "__main__":
     with memory_logger(filename=fn, interval=30.) as mem:
         n = prepare_network(n, solve_opts=snakemake.config['solving']['options'])
         n = solve_network_rh(n, config, solver_dir=tmpdir,
-                          solver_log=snakemake.log.solver, opts=opts, period = period)
+                          solver_log=snakemake.log.solver, opts=opts, storage_bidding = storage_bidding)
         n.export_to_netcdf(snakemake.output[0])
 
     logger.info("Maximum memory usage: {}".format(mem.mem_usage))
