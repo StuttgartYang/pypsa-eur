@@ -375,7 +375,7 @@ def calculate_weighted_prices(n,label,weighted_prices):
 
 
 outputs = ["costs",
-           "curtailment",
+          # "curtailment",
            "energy",
            "capacities",
            # "supply",

@@ -504,12 +504,26 @@ rule make_summary_by_folder:
     output:
         costs='results/summary/csvs/'+config['make_summary']['iteration']+'/costs.csv',
         capacities='results/summary/csvs/'+config['make_summary']['iteration']+'/capacities.csv',
-        curtailment='results/summary/csvs/'+config['make_summary']['iteration']+'/curtailment.csv',
+     #   curtailment='results/summary/csvs/'+config['make_summary']['iteration']+'/curtailment.csv',
         energy='results/summary/csvs/'+config['make_summary']['iteration']+'/energy.csv',
     threads: 4
     resources: mem=5000
     script: "scripts/make_summary_by_folder.py"
 
+rule plot_summary_by_folder:
+    input:
+        costs='results/summary/csvs/'+config['make_summary']['iteration']+'/costs.csv',
+        capacities='results/summary/csvs/'+config['make_summary']['iteration']+'/capacities.csv',
+      #  curtailment='results/summary/csvs/'+config['make_summary']['iteration']+'/curtailment.csv',
+        energy='results/summary/csvs/'+config['make_summary']['iteration']+'/energy.csv',
+    output:
+        costs='results/summary/graphs/'+config['make_summary']['iteration']+'/costs.png',
+        capacities='results/summary/graphs/'+config['make_summary']['iteration']+'/capacities.png',
+        energy='results/summary/graphs/'+config['make_summary']['iteration']+'/energy.png',
+
+    threads: 4
+    resources: mem=5000
+    script: "scripts/make_summary_by_folder.py"
 #
 #
 # rule make_summary:

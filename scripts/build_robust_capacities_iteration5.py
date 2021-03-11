@@ -63,6 +63,13 @@ logger = logging.getLogger(__name__)
 
 idx = pd.IndexSlice
 
+def change_co2limit(n, Nyears=1., factor=None):
+    if factor is not None:
+        annual_emissions = factor*snakemake.config['electricity']['co2base']
+    else:
+        annual_emissions = snakemake.config['electricity']['co2limit']
+    n.global_constraints.loc["CO2Limit", "constant"] = annual_emissions * Nyears
+
 def set_parameters_from_optimized(n, networks_dict, solve_opts):
     nodal_capacities = calculate_nodal_capacities(networks_dict)
 
@@ -78,6 +85,8 @@ def set_parameters_from_optimized(n, networks_dict, solve_opts):
     n.generators.loc[gen_extend_i, 'p_nom_extendable'] = False
     extra_generator = solve_opts.get('extra_generator')
     if extra_generator in snakemake.config["electricity"]["conventional_carriers"]:
+        if extra_generator == "OCGT":
+            change_co2limit(n, 1, 0.05)
         generator_extend_index = n.generators.index[n.generators.carrier == extra_generator]
         n.generators.loc[generator_extend_index, 'p_nom'] = gen_capacities.loc[generator_extend_index, :].max(axis=1)
         n.generators.loc[generator_extend_index, 'p_nom_extendable'] = False
