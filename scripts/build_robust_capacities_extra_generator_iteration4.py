@@ -11,6 +11,7 @@ from vresutils.benchmark import memory_logger
 from solve_network import solve_network, prepare_network
 from build_optimized_capacities_iteration1 import calculate_nodal_capacities
 from add_electricity import load_costs, load_powerplants, attach_conventional_generators, _add_missing_carriers_from_costs
+
 from six import iteritems
 import pandas as pd
 import os
@@ -63,6 +64,15 @@ def add_extra_generator(n, solve_opts):
 
     return n
 
+def set_capital_costs(n, carrier):
+    Nyears = n.snapshot_weightings.sum() / 8760.
+    costs = "data/costs.csv"
+    costs = load_costs(Nyears, tech_costs=costs, config=snakemake.config['costs'],
+                       elec_config=snakemake.config['electricity'])
+    n.generators.capital_cost[n.generators.carrier == carrier] = costs.at[carrier, 'capital_cost']
+
+    return n
+
 
 
 def set_parameters_from_optimized(n, networks_dict, solve_opts):
@@ -105,6 +115,8 @@ def set_parameters_from_optimized(n, networks_dict, solve_opts):
     if extra_generator in (conventional_carriers | renewable_carriers):
         generator_extend_index = n.generators.index[n.generators.carrier == extra_generator]
         n.generators.loc[generator_extend_index, 'p_nom_extendable'] = True
+        set_capital_costs(n, extra_generator)
+
 
     stor_extend_i = n.storage_units.index[n.storage_units.p_nom_extendable]
     stor_capacities = nodal_capacities.loc['storage_units']
