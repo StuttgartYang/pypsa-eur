@@ -63,12 +63,7 @@ def add_extra_generator(n, solve_opts):
 
     return n
 
-def change_co2limit(n, Nyears=1., factor=None):
-    if factor is not None:
-        annual_emissions = factor*snakemake.config['electricity']['co2base']
-    else:
-        annual_emissions = snakemake.config['electricity']['co2limit']
-    n.global_constraints.loc["CO2Limit", "constant"] = annual_emissions * Nyears
+
 
 def set_parameters_from_optimized(n, networks_dict, solve_opts):
     nodal_capacities = calculate_nodal_capacities(networks_dict)
@@ -109,8 +104,6 @@ def set_parameters_from_optimized(n, networks_dict, solve_opts):
     print(extra_generator)
     print(snakemake.config["electricity"]["conventional_carriers"])
     if extra_generator in snakemake.config["electricity"]["conventional_carriers"]:
-        if extra_generator == "OCGT":
-            change_co2limit(n, 1, 0.05)
         print("here1")
         generator_extend_index = n.generators.index[n.generators.carrier == extra_generator]
         n.generators.loc[generator_extend_index, 'p_nom_extendable'] = True
@@ -128,6 +121,8 @@ def set_parameters_from_optimized(n, networks_dict, solve_opts):
     n.stores.loc[stores_extend_i, 'e_nom'] = stores_capacities.loc[stores_extend_i, :].mean(axis=1)
     n.stores.loc[stores_extend_i, 'e_nom_extendable']\
 
+    # n.stores.loc[n.stores.carrier == "co2 stored", 'e_nom_max'] == 5e8
+    # n.stores.loc[n.stores.carrier == "co2 stored", 'e_nom'] == 5e8
     return n
 
 if __name__ == "__main__":

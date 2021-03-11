@@ -81,9 +81,6 @@ def assign_locations(n):
                 c.df.loc[names,'location'] = names.str[:i]
 
 def calculate_nodal_capacities(networks_dict):
-    #Beware this also has extraneous locations for country (e.g. biomass) or continent-wide (e.g. fossil gas/oil) stuff
-    # networks_dict = {(year):'results/networks/{year}/elec_s_40_ec_lv1.0_Co2L0p0-3H_storage_units.nc' \
-    #                          .format(year=year) for year in capacity_years}
     columns = list(networks_dict.keys())
     nodal_capacities = pd.DataFrame(columns=columns)
     lines_capacities = pd.DataFrame()
@@ -102,7 +99,6 @@ def calculate_nodal_capacities(networks_dict):
             index = pd.MultiIndex.from_tuples([(c.list_name,t) for t in nodal_capacities_c.index])
             nodal_capacities = nodal_capacities.reindex(index | nodal_capacities.index)
             nodal_capacities.loc[index, label] = nodal_capacities_c.values
-        # df = pd.concat([nodal_capacities, df], axis=1)
     nodal_capacities.to_csv("notebook/data/nodal_capacities.csv")
     return nodal_capacities
 
@@ -135,26 +131,22 @@ def set_parameters_from_optimized(n, networks_dict):
     links_capacities = nodal_capacities.loc['links']
     n.links.loc[links_dc_i, 'p_nom_max'] = links_capacities.loc[links_dc_i,:].max(axis=1)
     n.links.loc[links_dc_i, 'p_nom_min'] = links_capacities.loc[links_dc_i,:].mean(axis=1)
-   # n.links.loc[links_dc_i, 'p_nom_extendable'] = False
 
     gen_extend_i = n.generators.index[n.generators.p_nom_extendable]
     gen_capacities = nodal_capacities.loc['generators']
     #gen_capacities = gen_capacities.reset_index(level=[1]).reindex(gen_extend_i, fill_value=0.)
     n.generators.loc[gen_extend_i, 'p_nom_max'] = gen_capacities.loc[gen_extend_i,:].max(axis=1)
     n.generators.loc[gen_extend_i, 'p_nom_min'] = gen_capacities.loc[gen_extend_i,:].mean(axis=1)
-   # n.generators.loc[gen_extend_i, 'p_nom_extendable'] = False
 
     stor_extend_i = n.storage_units.index[n.storage_units.p_nom_extendable]
     stor_capacities = nodal_capacities.loc['storage_units']
     n.storage_units.loc[stor_extend_i, 'p_nom_max'] = stor_capacities.loc[stor_extend_i,:].max(axis=1)
     n.storage_units.loc[stor_extend_i, 'p_nom_min'] = stor_capacities.loc[stor_extend_i, :].mean(axis=1)
-   # n.storage_units.loc[stor_extend_i, 'p_nom_extendable'] = False
 
     stores_extend_i = n.stores.index[n.stores.e_nom_extendable]
     stores_capacities = nodal_capacities.loc['stores']
     n.stores.loc[stores_extend_i, 'e_nom_max'] = stores_capacities.loc[stores_extend_i,:].max(axis=1)
     n.stores.loc[stores_extend_i, 'e_nom_min'] = stores_capacities.loc[stores_extend_i, :].mean(axis=1)
-   # n.stores.loc[stores_extend_i, 'e_nom_extendable'] = False
     return n
 
 if __name__ == "__main__":
