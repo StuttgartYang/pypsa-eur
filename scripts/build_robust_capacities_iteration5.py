@@ -84,7 +84,9 @@ def set_parameters_from_optimized(n, networks_dict, solve_opts):
     n.generators.loc[gen_extend_i, 'p_nom'] = gen_capacities.loc[gen_extend_i,:].max(axis=1)
     n.generators.loc[gen_extend_i, 'p_nom_extendable'] = False
     extra_generator = solve_opts.get('extra_generator')
-    if extra_generator in snakemake.config["electricity"]["conventional_carriers"]:
+    conventional_carriers = snakemake.config["electricity"]["conventional_carriers"]
+    renewable_carriers = snakemake.config['renewable']
+    if extra_generator in (conventional_carriers | renewable_carriers):
         if extra_generator == "OCGT":
             change_co2limit(n, 1, 0.05)
         generator_extend_index = n.generators.index[n.generators.carrier == extra_generator]
