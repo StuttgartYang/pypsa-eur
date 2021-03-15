@@ -54,6 +54,8 @@ import numpy as np
 from pathlib import Path
 from vresutils.benchmark import memory_logger
 from solve_network import solve_network, prepare_network
+from build_robust_capacities_extra_generator_iteration4 import change_co2limit
+from build_robust_capacities_extra_generator_iteration4 import set_capital_cost
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -70,7 +72,18 @@ def set_parameters_from_optimized(n, nodal_capacities):
     # gen_extend_i_exclude_biomass = [elem for i, elem in enumerate(gen_extend_i) if elem not in biomass_extend_index]
     n.generators.loc[gen_extend_i, 'p_nom'] = gen_capacities.loc[gen_extend_i, "robust_capacities"]
     n.generators.loc[gen_extend_i, 'p_nom_extendable'] = False
-
+    extra_generator = snakemake.config['solving']['options']['extra_generator']
+    conventional_carriers = snakemake.config["electricity"]["conventional_carriers"]
+    renewable_carriers = snakemake.config['renewable']
+    carriers = conventional_carriers + list(renewable_carriers.keys())
+    if extra_generator in carriers:
+        print("here")
+        if extra_generator == "OCGT":
+            change_co2limit(n, 1, 0.05, snakemake.config['electricity']['co2base'], snakemake.config['electricity']['co2limit'])
+        generator_extend_index = n.generators.index[n.generators.carrier == extra_generator]
+        n.generators.loc[generator_extend_index, 'p_nom'] = gen_capacities.loc[generator_extend_index, "robust_capacities"]
+        n = set_capital_cost(n, extra_generator, snakemake.config['costs'], snakemake.config['electricity'])
+        n.generators.loc[generator_extend_index, 'p_nom_extendable'] = False
 
     stor_extend_i = n.storage_units.index[n.storage_units.p_nom_extendable]
     stor_capacities = nodal_capacities.loc['storage_units']

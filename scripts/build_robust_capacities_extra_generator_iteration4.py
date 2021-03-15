@@ -21,6 +21,13 @@ idx = pd.IndexSlice
 
 opt_name = {"Store": "e", "Line" : "s", "Transformer" : "s"}
 
+def change_co2limit(n, Nyears=1., factor=None, config_co2base=None, config_co2limit=None):
+    if factor is not None:
+        annual_emissions = factor*config_co2base
+    else:
+        annual_emissions = config_co2limit
+    n.global_constraints.loc["CO2Limit", "constant"] = annual_emissions * Nyears
+
 def add_extra_generator(n, solve_opts):
     extra_generator = solve_opts.get('extra_generator')
 
@@ -63,11 +70,11 @@ def add_extra_generator(n, solve_opts):
 
     return n
 
-def set_capital_cost(n, carrier):
+def set_capital_cost(n, carrier, config, elec_config):
     Nyears = n.snapshot_weightings.sum() / 8760.
     costs = "data/costs.csv"
-    costs = load_costs(Nyears, tech_costs=costs, config=snakemake.config['costs'],
-                       elec_config=snakemake.config['electricity'])
+    costs = load_costs(Nyears, tech_costs=costs, config= config,
+                       elec_config=elec_config)
     n.generators.capital_cost[n.generators.carrier == carrier] = costs.at[carrier, 'capital_cost']
     return n
 
@@ -109,10 +116,13 @@ def set_parameters_from_optimized(n, networks_dict, solve_opts):
     extra_generator = solve_opts.get('extra_generator')
     conventional_carriers = snakemake.config["electricity"]["conventional_carriers"]
     renewable_carriers = snakemake.config['renewable']
-    if extra_generator in (conventional_carriers | renewable_carriers):
+    carriers = conventional_carriers+list(renewable_carriers.keys())
+    if extra_generator in carriers:
+        if extra_generator == "OCGT":
+            change_co2limit(n, 1, 0.05, snakemake.config['electricity']['co2base'], snakemake.config['electricity']['co2limit'])
         generator_extend_index = n.generators.index[n.generators.carrier == extra_generator]
         n.generators.loc[generator_extend_index, 'p_nom_extendable'] = True
-        n = set_capital_cost(n, extra_generator)
+        n = set_capital_cost(n, extra_generator, snakemake.config['costs'], snakemake.config['electricity'])
 
     stor_extend_i = n.storage_units.index[n.storage_units.p_nom_extendable]
     stor_capacities = nodal_capacities.loc['storage_units']

@@ -441,11 +441,11 @@ rule build_final_robust_capacities:
     script: "scripts/build_final_robust_capacities.py"
 
 
-rule solve_operations_network_robust_capacities_iteration6:
-    input: expand("results/networks/iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario']),
+rule solve_operations_network_robust_capacities:
+    input: capacities = "results/networks/iteration5/robust_capacities.csv",
         unprepared="networks/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc"
     output: #expand("results/networks/iteration6/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario'])
-        "results/networks/iteration6/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc"
+        "results/networks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op.nc"
     log:
         solver=normpath("logs/solve_operations_network_robust_capacities_iteration6/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_solver.log"),
         python="logs/solve_operations_network_robust_capacities_iteration6/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_python.log",
@@ -454,7 +454,7 @@ rule solve_operations_network_robust_capacities_iteration6:
     threads: 4
     resources: mem=5000
     shadow: "shallow"
-    script: "scripts/solve_operations_network_robust_capacities.py"
+    script: "scripts/solve_operations_network_with_robust_capacities.py"
 
 # rule solve_operations_network_rh:
 #     input:
@@ -517,9 +517,9 @@ rule plot_summary_by_folder:
       #  curtailment='results/summary/csvs/'+config['make_summary']['iteration']+'/curtailment.csv',
         energy='results/summary/csvs/'+config['make_summary']['iteration']+'/energy.csv',
     output:
-        costs='results/summary/graphs/'+config['make_summary']['iteration']+'/costs.png',
-        capacities='results/summary/graphs/'+config['make_summary']['iteration']+'/capacities.png',
-        energy='results/summary/graphs/'+config['make_summary']['iteration']+'/energy.png',
+        costs='results/summary/graphs/'+config['make_summary']['iteration']+'/costs.jpg',
+        capacities='results/summary/graphs/'+config['make_summary']['iteration']+'/capacities.jpg',
+        energy='results/summary/graphs/'+config['make_summary']['iteration']+'/energy.jpg',
 
     threads: 4
     resources: mem=5000

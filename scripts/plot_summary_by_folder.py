@@ -82,7 +82,7 @@ def plot_costs(infn, fn=None):
     new_columns = df.columns.sort_values()
 
     fig, ax = plt.subplots()
-    fig.set_size_inches((12,8))
+    fig.set_size_inches((8,8))
 
     df.loc[new_index,new_columns].T.plot(kind="bar",ax=ax,stacked=True,color=[snakemake.config['plotting']['tech_colors'][i] for i in new_index])
 

@@ -55,6 +55,7 @@ from pathlib import Path
 from vresutils.benchmark import memory_logger
 from solve_network import solve_network, prepare_network
 from build_optimized_capacities_iteration1 import calculate_nodal_capacities
+from build_robust_capacities_extra_generator_iteration4 import set_capital_cost
 from six import iteritems
 import pandas as pd
 import os
@@ -86,11 +87,13 @@ def set_parameters_from_optimized(n, networks_dict, solve_opts):
     extra_generator = solve_opts.get('extra_generator')
     conventional_carriers = snakemake.config["electricity"]["conventional_carriers"]
     renewable_carriers = snakemake.config['renewable']
-    if extra_generator in (conventional_carriers | renewable_carriers):
+    carriers = conventional_carriers + list(renewable_carriers.keys())
+    if extra_generator in carriers:
         if extra_generator == "OCGT":
-            change_co2limit(n, 1, 0.05)
+            change_co2limit(n, 1, 0.05, snakemake.config['electricity']['co2base'], snakemake.config['electricity']['co2limit'])
         generator_extend_index = n.generators.index[n.generators.carrier == extra_generator]
         n.generators.loc[generator_extend_index, 'p_nom'] = gen_capacities.loc[generator_extend_index, :].max(axis=1)
+        n = set_capital_cost(n, extra_generator, snakemake.config['costs'], snakemake.config['electricity'])
         n.generators.loc[generator_extend_index, 'p_nom_extendable'] = False
 
     stor_extend_i = n.storage_units.index[n.storage_units.p_nom_extendable]

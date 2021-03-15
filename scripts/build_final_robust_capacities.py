@@ -46,5 +46,5 @@ if __name__ == "__main__":
     print(networks_dict)
 
     nodal_capacities = calculate_nodal_capacities(networks_dict)
-    nodal_capacities["robust_capacities"] = nodal_capacities.mean(axis=1)
+    nodal_capacities["robust_capacities"] = nodal_capacities.max(axis=1)
     nodal_capacities.to_csv(snakemake.output[0])
