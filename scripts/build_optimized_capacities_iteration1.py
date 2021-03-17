@@ -182,7 +182,6 @@ if __name__ == "__main__":
                      for clusters in expand_from_wildcard("clusters")
                      for l in ll
                      for opts in expand_from_wildcard("opts")}
-    print(networks_dict)
     #
     #
     n = pypsa.Network(snakemake.input.unprepared)

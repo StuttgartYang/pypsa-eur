@@ -117,12 +117,13 @@ def set_parameters_from_optimized(n, networks_dict, solve_opts):
     conventional_carriers = snakemake.config["electricity"]["conventional_carriers"]
     renewable_carriers = snakemake.config['renewable']
     carriers = conventional_carriers+list(renewable_carriers.keys())
-    if extra_generator in carriers:
-        if extra_generator == "OCGT":
-            change_co2limit(n, 1, 0.05, snakemake.config['electricity']['co2base'], snakemake.config['electricity']['co2limit'])
-        generator_extend_index = n.generators.index[n.generators.carrier == extra_generator]
-        n.generators.loc[generator_extend_index, 'p_nom_extendable'] = True
-        n = set_capital_cost(n, extra_generator, snakemake.config['costs'], snakemake.config['electricity'])
+    #if extra_generator in carriers:
+    # if extra_generator == "OCGT":
+    #     change_co2limit(n, 1, 0.05, snakemake.config['electricity']['co2base'],
+    #                     snakemake.config['electricity']['co2limit'])
+    generator_extend_index = n.generators.index[n.generators.carrier == extra_generator]
+    n.generators.loc[generator_extend_index, 'p_nom_extendable'] = True
+    n = set_capital_cost(n, extra_generator, snakemake.config['costs'], snakemake.config['electricity'])
 
     stor_extend_i = n.storage_units.index[n.storage_units.p_nom_extendable]
     stor_capacities = nodal_capacities.loc['storage_units']

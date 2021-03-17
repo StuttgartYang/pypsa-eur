@@ -69,10 +69,6 @@ def plot_costs(infn, fn=None):
 
     to_drop = df.index[df.max(axis=1) < snakemake.config['plotting']['costs_threshold']]
 
-    print("dropping")
-
-    print(df.loc[to_drop])
-
     df = df.drop(to_drop)
 
 
@@ -125,10 +121,6 @@ def plot_energy(infn, fn=None):
 
     to_drop = df.index[df.abs().max(axis=1) < snakemake.config['plotting']['energy_threshold']]
 
-    print("dropping")
-
-    print(df.loc[to_drop])
-
     df = df.drop(to_drop)
     new_index = (preferred_order&df.index).append(df.index.difference(preferred_order))
 
@@ -166,8 +158,8 @@ def plot_capacities():
     # convert MWh to TWh
     df = df / 1e6
     df = df.groupby(df.index.map(rename_techs)).sum()
-    if "load shedding" in df.index:
-       df = df.drop("load shedding", axis=0)
+    if "load" in df.index:
+       df = df.drop("load", axis=0)
     new_index = (preferred_order&df.index).append(df.index.difference(preferred_order))
     # new_columns = df.sum().sort_values().index
     new_columns = df.columns.sort_values()
@@ -223,7 +215,9 @@ if __name__ == "__main__":
             snakemake.input[item] = '../results/summary/csvs/'+snakemake.config['make_summary']['iteration']+'/{item}.csv'.format(item=item)
             snakemake.output[item] = '../results/summary/graphs/'+snakemake.config['make_summary']['iteration']+'/{item}_'.format(item=item)+snakemake.config['make_summary']['iteration']+'.jpg'
 
+    print("here", snakemake.output["costs"])
     plot_costs(snakemake.input["costs"], snakemake.output["costs"])
+
 
     plot_energy(snakemake.input["energy"], snakemake.output["energy"])
     plot_capacities()

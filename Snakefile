@@ -413,19 +413,19 @@ rule build_robust_capacities_extra_generator_iteration4:
     shadow: "shallow"
     script: "scripts/build_robust_capacities_extra_generator_iteration4.py"
 
-rule build_robust_capacities_iteration5:
-    input: expand("results/networks/iteration4/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario']),
-        unprepared="networks/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc"
-    output: "results/networks/iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc"
-    log:
-        solver=normpath("logs/build_robust_capacities_iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_solver.log"),
-        python="logs/build_robust_capacities_iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_python.log",
-        memory="logs/build_robust_capacities_iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_memory.log"
-    benchmark: "benchmarks/build_robust_capacities_iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}"
-    threads: 4
-    resources: mem=5000
-    shadow: "shallow"
-    script: "scripts/build_robust_capacities_iteration5.py"
+# rule build_robust_capacities_iteration5:
+#     input: expand("results/networks/iteration3/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario']),
+#         unprepared="networks/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc"
+#     output: "results/networks/iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc"
+#     log:
+#         solver=normpath("logs/build_robust_capacities_iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_solver.log"),
+#         python="logs/build_robust_capacities_iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_python.log",
+#         memory="logs/build_robust_capacities_iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_memory.log"
+#     benchmark: "benchmarks/build_robust_capacities_iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}"
+#     threads: 4
+#     resources: mem=5000
+#     shadow: "shallow"
+#     script: "scripts/build_robust_capacities_iteration5.py"
 
 rule build_final_robust_capacities:
     input: expand("results/networks/iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario']),
@@ -440,6 +440,20 @@ rule build_final_robust_capacities:
     shadow: "shallow"
     script: "scripts/build_final_robust_capacities.py"
 
+
+rule build_robust_capacities_iteration5:
+    input: expand("results/networks/iteration4/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc", **config['scenario']),
+        unprepared="networks/{capacity_years}/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc"
+    output: "results/networks/iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}.nc"
+    log:
+        solver=normpath("logs/build_robust_capacities_iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_solver.log"),
+        python="logs/build_robust_capacities_iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_python.log",
+        memory="logs/build_robust_capacities_iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}_op_memory.log"
+    benchmark: "benchmarks/build_robust_capacities_iteration5/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{capacity_years}"
+    threads: 4
+    resources: mem=10000
+    shadow: "shallow"
+    script: "scripts/build_robust_capacities_iteration5.py"
 
 rule solve_operations_network_robust_capacities:
     input: capacities = "results/networks/iteration5/robust_capacities.csv",
@@ -523,7 +537,7 @@ rule plot_summary_by_folder:
 
     threads: 4
     resources: mem=5000
-    script: "scripts/make_summary_by_folder.py"
+    script: "scripts/plot_summary_by_folder.py"
 #
 #
 # rule make_summary:
