@@ -73,9 +73,8 @@ def set_parameters_from_optimized(n, n_optim):
             n_optim.lines[attr].reindex(lines_untyped_i, fill_value=0.)
     n.lines['s_nom_extendable'] = False
 
-    links_dc_i = n.links.index[n.links.carrier == 'DC']
-    n.links.loc[links_dc_i, 'p_nom'] = \
-        n_optim.links['p_nom_opt'].reindex(links_dc_i, fill_value=0.)
+    links_dc_i = n.links.index[n.links.p_nom_extendable]
+    n.links.loc[links_dc_i, 'p_nom'] = n_optim.links.loc[links_dc_i, 'p_nom_opt']
     n.links.loc[links_dc_i, 'p_nom_extendable'] = False
 
     gen_extend_i = n.generators.index[n.generators.p_nom_extendable]
@@ -108,9 +107,13 @@ def get_store_demand_bid(n,  carrier, snapshots, node, link_charger, link_discha
 
 def set_bidding_price(n, n_optim, storage_bidding):
     nodelist = n.buses[n.buses.carrier == "AC"].index
-    storage_carrier = storage_bidding.split('-')
-    if storage_carrier == "all":
+    if storage_bidding == "all":
         storage_carrier = n.stores.carrier.unique()
+    else:
+        storage_carrier = storage_bidding.split('-')
+
+
+    print(storage_carrier)
 
     for carrier in storage_carrier:
         if carrier == "H2":
@@ -128,7 +131,6 @@ def set_bidding_price(n, n_optim, storage_bidding):
                 n.links_t.marginal_cost.loc[n.snapshots, node + link_charger] = - charging_bid
                 n.links_t.marginal_cost[node + link_discharger] = 0
                 n.links_t.marginal_cost.loc[n.snapshots, node + link_discharger] = discharging_bid
-    return n
 
 
 
@@ -145,6 +147,7 @@ def solve_network_rh(n, config, solver_log=None, opts='', storage_bidding='all',
     n.config = config
     n.opts = opts
     freq = int(opts[1][0])
+    print(freq)
 
     window = config['window'] * 24 // freq
     overlap = config['overlap'] * 24 // freq
@@ -164,16 +167,16 @@ def solve_network_rh(n, config, solver_log=None, opts='', storage_bidding='all',
     #     loop_num = length // kept
     # else:
     #     print("period should be 3h or 2w")
-    n = set_bidding_price(n,n_optim, storage_bidding)
+    set_bidding_price(n,n_optim, storage_bidding)
+    print(n.links_t.marginal_cost)
     for i in range(length // kept):
         # set initial state of charge
         snapshots = n.snapshots[i * kept:(i + 1) * kept + overlap]
-
+        print(snapshots)
         if i == 0:
             n.stores.e_initial = n_optim.stores_t.e.iloc[0]
             n.storage_units.state_of_charge_initial = n_optim.storage_units_t.state_of_charge.iloc[-1]
         else:
-
             n.stores.e_initial = n.stores_t.e.iloc[i * kept - 1]
             n.storage_units.state_of_charge_initial = n.storage_units_t.state_of_charge.iloc[i * kept - 1]
         if cf_solving.get('skip_iterations', False):
