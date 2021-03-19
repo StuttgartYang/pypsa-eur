@@ -152,6 +152,43 @@ def plot_energy(infn, fn=None):
     if fn is not None:
         fig.savefig(fn, transparent=True)
 
+def plot_supply_energy(carrier):
+    supply_df = pd.read_csv(snakemake.input.supply_energy,index_col=list(range(3)),header=[0])
+    supply_df = supply_df.droplevel(0)
+    df = supply_df.groupby(supply_df.index.get_level_values(1)).sum()
+    # convert MWh to TWh
+    df = df / 1e6
+    df = df.groupby(df.index.map(rename_techs)).sum()
+    #new_index = (preferred_order&df.index).append(df.index.difference(preferred_order))
+    # new_columns = df.sum().sort_values().index
+    new_columns = df.columns.sort_values()
+    supply_total = df.loc[carrier, new_columns]
+
+    fig, ax = plt.subplots()
+    # fig.set_size_inches((12,8))
+    df.loc[carrier,new_columns].T.plot(kind="bar",ax=ax,stacked=True,color=[snakemake.config['plotting']['tech_colors'][carrier]])
+
+    handles,labels = ax.get_legend_handles_labels()
+    handles.reverse()
+    labels.reverse()
+    ax.set_ylabel(carrier + " Supply [TWh]")
+
+    ax.set_xlabel("")
+
+    ax.grid(axis="y")
+
+    ax.legend(handles,labels,ncol=1,loc="upper left", bbox_to_anchor=(1,1))
+    ticklabel=ax.get_xticklabels()
+    ax.set_xticklabels(ticklabel)
+
+    for i, v in enumerate(supply_total):
+        ax.text(i, v, str("%.2f" % v))
+    ax.title.set_text("Total supply is " + str("%.2f" %supply_total.sum()))
+
+    fig.tight_layout()
+
+    fig.savefig(snakemake.output.supply_energy,transparent=True)
+
 def plot_capacities():
     capacity_df = pd.read_csv(snakemake.input.capacities,index_col=list(range(2)),header=[0])
     df = capacity_df.groupby(capacity_df.index.get_level_values(1)).sum()
@@ -189,15 +226,44 @@ def plot_capacities():
 
     fig.savefig(snakemake.output.capacities,transparent=True)
 
-    # standard_dev = df.loc[new_index, new_columns].std(axis=1)
-    # plt.plot(standard_dev)
-    # for i, v in enumerate(standard_dev):
-    #     plt.text(i, v + 10, str("%.2f" % v), rotation="45")
-    # plt.ylabel('Standard Devidation of Capacities in 30 years')
-    # plt.xticks(rotation=45, wrap=True)
-    #
-    # plt.savefig("../results/summary/postnetworks/graphs/without/capacities_standard_deviation.jpg")
-    # plt.close()
+def plot_capacities_by_carrier(carrier):
+    capacity_df = pd.read_csv(snakemake.input.capacities,index_col=list(range(2)),header=[0])
+    df = capacity_df.groupby(capacity_df.index.get_level_values(1)).sum()
+    # convert MW to TW
+    df = df / 1e6
+    df = df.groupby(df.index.map(rename_techs)).sum()
+    if "load" in df.index:
+       df = df.drop("load", axis=0)
+    new_index = (preferred_order&df.index).append(df.index.difference(preferred_order))
+    # new_columns = df.sum().sort_values().index
+    new_columns = df.columns.sort_values()
+    capacity_total = df.loc[carrier, new_columns]
+
+    fig, ax = plt.subplots()
+    # fig.set_size_inches((12,8))
+    df.loc[carrier,new_columns].T.plot(kind="bar",ax=ax,stacked=True,color=[snakemake.config['plotting']['tech_colors'][carrier]])
+
+    handles,labels = ax.get_legend_handles_labels()
+    handles.reverse()
+    labels.reverse()
+    ax.set_ylabel("Capacities")
+
+    ax.set_xlabel("")
+
+    ax.grid(axis="y")
+
+    ax.legend(handles,labels,ncol=1,loc="upper left", bbox_to_anchor=(1,1))
+    ticklabel=ax.get_xticklabels()
+    ax.set_xticklabels(ticklabel)
+
+    for i, v in enumerate(capacity_total):
+        ax.text(i, v, str("%.2f" % v))
+    ax.title.set_text("Average capacities are " + str("%.2f" %capacity_total.mean()) +"TW")
+
+    fig.tight_layout()
+
+    fig.savefig(snakemake.output.capacity_by_carrier,transparent=True)
+
 
 if __name__ == "__main__":
     if 'snakemake' not in globals():
@@ -211,15 +277,18 @@ if __name__ == "__main__":
 
 
         # for item in ["costs","energy","capacities","original_curtailment","load_shedding"]:
-        for item in ["costs", "energy","capacities" ]:
+        for item in ["costs", "energy","capacities", "supply_energy" ]:
             snakemake.input[item] = '../results/summary/csvs/'+snakemake.config['make_summary']['iteration']+'/{item}.csv'.format(item=item)
             snakemake.output[item] = '../results/summary/graphs/'+snakemake.config['make_summary']['iteration']+'/{item}_'.format(item=item)+snakemake.config['make_summary']['iteration']+'.jpg'
+        snakemake.output["capacity_by_carrier"] = '../results/summary/graphs/' + snakemake.config['make_summary'][
+            'iteration'] + '/{capacity_by_carrier}_' + snakemake.config['make_summary']['iteration'] + '.jpg'
 
-    print("here", snakemake.output["costs"])
     plot_costs(snakemake.input["costs"], snakemake.output["costs"])
 
 
     plot_energy(snakemake.input["energy"], snakemake.output["energy"])
     plot_capacities()
+    plot_supply_energy("biomass")
+    plot_capacities_by_carrier("biomass")
 
 
