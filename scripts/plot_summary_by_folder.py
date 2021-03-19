@@ -229,8 +229,8 @@ def plot_capacities():
 def plot_capacities_by_carrier(carrier):
     capacity_df = pd.read_csv(snakemake.input.capacities,index_col=list(range(2)),header=[0])
     df = capacity_df.groupby(capacity_df.index.get_level_values(1)).sum()
-    # convert MW to TW
-    df = df / 1e6
+    # convert MW to GW
+    df = df / 1e3
     df = df.groupby(df.index.map(rename_techs)).sum()
     if "load" in df.index:
        df = df.drop("load", axis=0)
@@ -257,8 +257,8 @@ def plot_capacities_by_carrier(carrier):
     ax.set_xticklabels(ticklabel)
 
     for i, v in enumerate(capacity_total):
-        ax.text(i, v, str("%.2f" % v))
-    ax.title.set_text("Average capacities are " + str("%.2f" %capacity_total.mean()) +"TW")
+        ax.text(i, v, str("%.1f" % v))
+    ax.title.set_text("Average capacities are " + str("%.1f" %capacity_total.mean()) +"GW")
 
     fig.tight_layout()
 

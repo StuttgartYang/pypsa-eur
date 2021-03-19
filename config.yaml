@@ -19,7 +19,7 @@ scenario:
   capacity_years: ["2013","2014","2015","2016","2017","2018"]
 
 make_summary:
-  iteration: "iteration5"
+  iteration: "iteration0"
 
 
 countries: ['AL', 'AT', 'BA', 'BE', 'BG', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GB', 'GR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'ME', 'MK', 'NL', 'NO', 'PL', 'PT', 'RO', 'RS', 'SE', 'SI', 'SK']
