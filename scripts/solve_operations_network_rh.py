@@ -147,7 +147,6 @@ def solve_network_rh(n, config, solver_log=None, opts='', storage_bidding='all',
     n.config = config
     n.opts = opts
     freq = int(opts[1][0])
-    print(freq)
 
     window = config['window'] * 24 // freq
     overlap = config['overlap'] * 24 // freq
@@ -168,11 +167,9 @@ def solve_network_rh(n, config, solver_log=None, opts='', storage_bidding='all',
     # else:
     #     print("period should be 3h or 2w")
     set_bidding_price(n,n_optim, storage_bidding)
-    print(n.links_t.marginal_cost)
     for i in range(length // kept):
         # set initial state of charge
         snapshots = n.snapshots[i * kept:(i + 1) * kept + overlap]
-        print(snapshots)
         if i == 0:
             n.stores.e_initial = n_optim.stores_t.e.iloc[0]
             n.storage_units.state_of_charge_initial = n_optim.storage_units_t.state_of_charge.iloc[-1]
